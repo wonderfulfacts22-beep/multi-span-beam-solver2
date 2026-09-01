@@ -1,0 +1,2957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Comprehensive Multi-Span Beam Matrix Stiffness & Theory Solver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- MathJax Configuration -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'none' },
+  startup: { typeset: true }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+:root {
+  --paper: #F4F1E8;
+  --panel: #FBF8F0;
+  --ink: #211E17;
+  --ink2: #57513F;
+  --mut: #7A7361;
+  --line: #D8D1BE;
+  --hair: #E6E0CF;
+  --verm: #C13A12;
+  --teal: #0D6A63;
+  --amber: #A0700C;
+  --blue: #1D5288;
+  --purple: #6b21a8;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --disp: 'Space Grotesk', sans-serif;
+  --body: 'IBM Plex Sans', sans-serif;
+  --script: 'Caveat', cursive, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.42;
+  background-image: radial-gradient(rgba(33,30,23,.04) .8px, transparent .8px);
+  background-size: 24px 24px;
+}
+.wrap {
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 16px 16px 40px;
+}
+::selection { background: var(--ink); color: var(--paper); }
+
+.tblock {
+  border: 1.5px solid var(--ink);
+  display: grid;
+  grid-template-columns: 130px 1fr auto;
+  background: var(--panel);
+  box-shadow: 3px 3px 0px rgba(33,30,23,0.08);
+}
+.tblock .mark-logo {
+  border-right: 1.5px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  padding: 8px 12px;
+}
+.brand-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+}
+.brand-text-row { display: flex; align-items: baseline; gap: 4px; }
+.brand-script {
+  font-family: var(--script);
+  font-size: 26px;
+  font-weight: 700;
+  color: #26292B;
+  transform: rotate(-3deg);
+  line-height: 0.9;
+}
+.brand-bold {
+  font-family: var(--disp);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #34373B;
+  line-height: 0.9;
+}
+.brand-underline {
+  width: 90%;
+  height: 2px;
+  background: #C4B189;
+  margin-top: 2px;
+  transform: rotate(0.8deg);
+}
+.tblock .tt { padding: 10px 16px; }
+.tblock h1 {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-size: clamp(16px, 1.8vw, 21px);
+  letter-spacing: -.02em;
+  line-height: 1.15;
+}
+.tblock .sub { color: var(--ink2); font-size: 11.5px; margin-top: 2px; }
+.tblock .fields {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.tblock .fields div {
+  padding: 8px 12px;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  justify-content: center;
+}
+.tblock .fields b { font-size: 11px; font-weight: 600; }
+.tblock .fields span { color: var(--mut); letter-spacing: .06em; font-size: 9px; text-transform: uppercase; }
+
+.proj-info-panel {
+  margin-top: 10px;
+  border: 1.2px solid var(--ink);
+  background: var(--panel);
+}
+.proj-header-toggle {
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: rgba(33,30,23,0.02);
+  user-select: none;
+}
+.proj-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 12px;
+  padding: 8px 12px;
+}
+.proj-field { display: flex; flex-direction: column; gap: 2px; }
+.proj-field label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+.proj-field input {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--line);
+  padding: 2px 0;
+  outline: none;
+  width: 100%;
+}
+
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.kpi-card {
+  background: var(--panel);
+  border: 1.2px solid var(--ink);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.kpi-card .kpi-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+.kpi-card .kpi-val {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+.kpi-card .kpi-sub {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink2);
+}
+
+.top-action-bar {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1.2px solid var(--ink);
+}
+.dashboard-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.tab-btn {
+  background: var(--paper);
+  border: 1.2px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.tab-btn.active { background: var(--ink); color: var(--paper); }
+
+.export-group { display: flex; gap: 6px; align-items: center; }
+.btn-export {
+  background: var(--verm);
+  color: #fff;
+  border: 1.2px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-export.secondary { background: var(--teal); }
+
+.workspace-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1050px) {
+  .workspace-grid { grid-template-columns: 1fr; }
+  .tblock { grid-template-columns: 110px 1fr; }
+  .tblock .fields { display: none; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1.2px solid var(--ink);
+}
+.pad { padding: 12px 14px; }
+.ph {
+  font-family: var(--disp);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink2);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--hair);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ctl-group {
+  border-bottom: 1px solid var(--hair);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+.ctl-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.ctl-title {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--verm);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ctl { margin-bottom: 6px; }
+select {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 2px 4px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  outline: none;
+}
+.span-stepper-container { display: flex; align-items: center; gap: 6px; }
+.btn-step {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--paper);
+  border: 1.2px solid var(--ink);
+  padding: 2px 8px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.span-num-input {
+  width: 50px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 2px;
+  border: 1.2px solid var(--ink);
+  background: var(--paper);
+}
+
+.span-card-box {
+  background: rgba(33,30,23,0.025);
+  border: 1.2px dashed var(--line);
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.span-card-head {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--teal);
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.btn-span-toggle, .btn-settle-toggle, .btn-temp-toggle {
+  background: var(--paper);
+  border: 1px solid var(--teal);
+  color: var(--teal);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  cursor: pointer;
+}
+.btn-settle-toggle { border-color: var(--amber); color: var(--amber); }
+.btn-temp-toggle { border-color: var(--purple); color: var(--purple); }
+
+.table-input-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.table-input-grid th, .table-input-grid td {
+  border: 1px solid var(--line);
+  padding: 3px 5px;
+}
+.table-input-grid th { background: rgba(33,30,23,0.05); font-weight: 600; }
+.table-input-grid input[type="number"] {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 1px 3px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.btn-del-tbl {
+  background: transparent;
+  color: var(--verm);
+  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 1px 4px;
+}
+.btn-seg-ctrl, .btn-add-load {
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.load-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 8.5px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.load-badge.point { background: rgba(13, 106, 99, 0.1); color: var(--teal); border: 1px solid rgba(13, 106, 99, 0.3); }
+.load-badge.uvl { background: rgba(193, 58, 18, 0.1); color: var(--verm); border: 1px solid rgba(193, 58, 18, 0.3); }
+.load-badge.moment { background: rgba(29, 82, 136, 0.1); color: var(--blue); border: 1px solid rgba(29, 82, 136, 0.3); }
+
+.field-chip-group { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.field-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  padding: 1px 3px;
+  background: #fff;
+}
+.field-chip label { font-size: 8.5px; font-weight: 700; color: var(--mut); margin-right: 2px; }
+.field-chip input {
+  width: 42px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  border: none !important;
+  text-align: right;
+  padding: 0 !important;
+}
+
+.temp-toggle-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 5px;
+  background: rgba(107, 33, 168, 0.07);
+  border: 1px solid rgba(107, 33, 168, 0.25);
+  cursor: pointer;
+  margin: 6px 0 4px;
+}
+
+.diag-card {
+  background: var(--panel);
+  border: 1.2px solid var(--ink);
+  padding: 10px;
+  position: relative;
+}
+.diag-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--hair);
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.diag-title-row h3 {
+  font-family: var(--disp);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+#diagWrap { width: 100%; position: relative; overflow: hidden; }
+#diagSvg { display: block; width: 100%; height: auto; cursor: crosshair; }
+#diagSvg text { font-family: var(--mono); }
+
+.hud-tooltip {
+  position: absolute;
+  pointer-events: none;
+  display: none;
+  z-index: 50;
+  background: rgba(13, 20, 30, 0.94);
+  border: 1.5px solid #238636;
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-width: 170px;
+  font-family: var(--mono);
+  color: #F4F1E8;
+  transform: translate(14px, -50%);
+}
+.hud-tooltip .hud-header {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #38bdf8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 2px;
+  margin-bottom: 3px;
+}
+.hud-tooltip .hud-row { display: flex; justify-content: space-between; font-size: 10px; margin: 2px 0; }
+.hud-tooltip .hud-label { color: #94a3b8; }
+.hud-tooltip .hud-val-shear { color: #34d399; font-weight: 600; }
+.hud-tooltip .hud-val-moment { color: #f87171; font-weight: 600; }
+.hud-tooltip .hud-val-def { color: #fbbf24; font-weight: 600; }
+.hud-tooltip .hud-val-ei { color: #f59e0b; font-weight: 600; }
+
+.step-list { display: flex; flex-direction: column; }
+.step-item {
+  display: grid;
+  grid-template-columns: 65px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.step-item:last-child { border-bottom: none; }
+.step-num {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--verm);
+  font-size: 11px;
+}
+.step-num:after { content: ""; display: block; width: 18px; height: 1.5px; background: var(--ink); margin-top: 4px; }
+.step-item h3 { font-family: var(--disp); font-size: 13.5px; font-weight: 700; }
+.step-item p { font-size: 12px; color: var(--ink2); margin: 2px 0 4px; }
+
+.math-box {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--teal);
+  padding: 8px 10px;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+.math-box.settle { border-left-color: var(--amber); background: rgba(160, 112, 12, 0.02); }
+.math-box.temp { border-left-color: var(--purple); background: rgba(107, 33, 168, 0.02); }
+
+.formula-tag {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+  background: rgba(33,30,23,0.06);
+  padding: 1px 5px;
+  color: var(--ink2);
+  margin-bottom: 4px;
+}
+
+.dof-badge-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+.dof-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fdfbf7;
+  border: 1px solid var(--line);
+  padding: 2px 6px;
+  font-size: 10.5px;
+}
+.dof-badge.uncon { border-left: 2.5px solid var(--teal); }
+.dof-badge.con { border-left: 2.5px solid var(--verm); background: rgba(193, 58, 18, 0.03); }
+.dof-tag {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  background: rgba(33,30,23,0.07);
+  padding: 1px 3px;
+}
+
+.hl-v { color: var(--verm); font-weight: 600; }
+.hl-t { color: var(--teal); font-weight: 600; }
+.hl-b { color: var(--blue); font-weight: 600; }
+.hl-p { color: var(--purple); font-weight: 600; }
+
+.table-kasm-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 6px 0;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+table.kasm {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  width: 100%;
+}
+table.kasm th, table.kasm td {
+  border: 1px solid var(--line);
+  padding: 3px 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+table.kasm th { background: var(--panel); font-weight: 600; color: var(--ink2); }
+table.kasm td.uncon { background: rgba(13, 106, 99, 0.09); font-weight: 600; color: var(--teal); }
+table.kasm td.con { background: rgba(193, 58, 18, 0.05); color: var(--ink2); }
+
+.legend-inline {
+  display: flex;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--mut);
+  flex-wrap: wrap;
+}
+.legend-item { display: flex; align-items: center; gap: 3px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.dot.teal { background: var(--teal); }
+.dot.verm { background: var(--verm); }
+.dot.amber { background: var(--amber); }
+.dot.blue { background: var(--blue); }
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  margin-top: 8px;
+}
+.schedule-table th, .schedule-table td { border: 1px solid var(--line); padding: 5px 6px; text-align: left; }
+.schedule-table th { background: rgba(33,30,23,0.05); font-weight: 700; color: var(--ink); }
+
+.reax-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.reax-card {
+  background: #ffffff;
+  border: 1.2px solid var(--ink);
+  padding: 6px 8px;
+}
+.reax-card-title {
+  font-family: var(--disp);
+  font-size: 10.5px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+.reax-card-item {
+  font-family: var(--mono);
+  font-size: 10px;
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0;
+}
+
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* Modal Dialog for Fullscreen Global Stiffness Matrix View */
+.matrix-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(20, 20, 20, 0.75);
+  backdrop-filter: blur(3px);
+  justify-content: center;
+  align-items: center;
+}
+.matrix-modal-content {
+  background: #fff;
+  border: 2px solid var(--ink);
+  width: 95%;
+  max-width: 1350px;
+  max-height: 90vh;
+  padding: 16px;
+  overflow: auto;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+/* ===================================================
+   VECTOR PRINT & CLEAN LANDSCAPE GLOBAL MATRIX
+=================================================== */
+@page {
+  size: A4 portrait;
+  margin: 8mm 10mm 8mm 10mm;
+}
+
+@page landscapePage {
+  size: A4 landscape;
+  margin: 6mm 8mm 6mm 8mm;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+    font-size: 9.5pt !important;
+    line-height: 1.3 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .wrap {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .top-action-bar, #sidebarPanel, .proj-header-toggle span:last-child, .btn-matrix-modal {
+    display: none !important;
+  }
+  .workspace-grid {
+    display: block !important;
+    margin-top: 6px !important;
+  }
+  .tab-pane {
+    display: block !important;
+    margin-bottom: 12px !important;
+  }
+  .diag-card, .panel {
+    background: #ffffff !important;
+    border: 1pt solid #211E17 !important;
+    box-shadow: none !important;
+    padding: 8px !important;
+    page-break-inside: avoid !important;
+  }
+  .math-box {
+    background: #ffffff !important;
+    border: 0.8pt solid #D8D1BE !important;
+    border-left: 2.5pt solid #0D6A63 !important;
+    padding: 6px 8px !important;
+    margin-top: 4px !important;
+    page-break-inside: avoid !important;
+  }
+  .step-item {
+    page-break-inside: avoid !important;
+    padding: 8px 0 !important;
+  }
+  
+  /* Full Width Horizontal Matrix Landscape Page */
+  .step-global-matrix-page {
+    page: landscapePage !important;
+    page-break-before: always !important;
+    page-break-after: always !important;
+    display: block !important;
+    width: 100% !important;
+  }
+  .step-global-matrix-page .table-kasm-wrap {
+    width: 100% !important;
+    overflow: visible !important;
+    border: none !important;
+  }
+  .step-global-matrix-page table.kasm {
+    font-size: 7.5pt !important;
+    width: 100% !important;
+  }
+  .step-global-matrix-page table.kasm th,
+  .step-global-matrix-page table.kasm td {
+    padding: 2.5px 3.5px !important;
+  }
+
+  .tblock {
+    box-shadow: none !important;
+    border: 1pt solid #000 !important;
+    page-break-after: avoid;
+  }
+  .dashboard-kpi-grid {
+    grid-template-columns: repeat(6, 1fr) !important;
+    gap: 4px !important;
+    page-break-inside: avoid !important;
+  }
+  .kpi-card {
+    padding: 4px 6px !important;
+    border: 0.8pt solid #000 !important;
+    box-shadow: none !important;
+  }
+  .kpi-card .kpi-val { font-size: 10.5pt !important; }
+  .schedule-table th, .schedule-table td { padding: 3px 5px !important; font-size: 8pt !important; }
+  svg { max-width: 100% !important; height: auto !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="exportableArea">
+  <div class="tblock">
+    <div class="mark-logo" title="Direct Solver">
+      <div class="brand-badge">
+        <div class="brand-text-row">
+          <span class="brand-script">Tanti</span>
+          <span class="brand-bold">HIT</span>
+        </div>
+        <div class="brand-underline"></div>
+      </div>
+    </div>
+    <div class="tt">
+      <h1>Multi-Span Stepped Continuous Beam Matrix Stiffness Solver</h1>
+      <div class="sub">Complete Structural Matrix Formulation • Temperature Gradients, Support Settlements, UVL & Reactions</div>
+    </div>
+    <div class="fields">
+      <div><span>ENGINEER</span><b>TANTI HIT</b></div>
+      <div><span>METHOD</span><b>DIRECT STIFFNESS</b></div>
+      <div><span>SPANS / NODES</span><b id="tb-spans">1 SPAN / 4 NODES</b></div>
+      <div><span>ACTIVE DOFs (D<sub>k</sub>)</span><b id="tb-dof">—</b></div>
+    </div>
+  </div>
+
+  <div class="proj-info-panel">
+    <div class="proj-header-toggle open" onclick="toggleProjInfo(this)">
+      <span style="font-family:var(--mono); font-size:10.5px; font-weight:700; text-transform:uppercase; color:var(--ink2);">📋 Project & Engineering Calculation Metadata</span>
+      <span id="proj-toggle-icon" style="font-family:var(--mono); font-size:9.5px; color:var(--mut);">▲ HIDE</span>
+    </div>
+    <div class="proj-info-grid" id="projInfoContent">
+      <div class="proj-field">
+        <label for="inp-proj-title">Project Title</label>
+        <input type="text" id="inp-proj-title" value="Multi-Span Beam Comprehensive Analysis"/>
+      </div>
+      <div class="proj-field">
+        <label for="inp-proj-engineer">Lead Structural Analyst</label>
+        <input type="text" id="inp-proj-engineer" value="Tanti Hit"/>
+      </div>
+      <div class="proj-field">
+        <label for="inp-proj-id">Calculation Reference Code</label>
+        <input type="text" id="inp-proj-id" value="MATRIX-DSM-004"/>
+      </div>
+      <div class="proj-field">
+        <label for="inp-proj-org">Engineering Department / Firm</label>
+        <input type="text" id="inp-proj-org" value="Structural Mechanics Div."/>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-kpi-grid">
+    <div class="kpi-card">
+      <span class="kpi-label">Peak Moment |M|<sub>max</sub></span>
+      <span class="kpi-val" style="color:var(--verm);" id="kpi-mmax">0.00 kN·m</span>
+      <span class="kpi-sub">Governing Flexure</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Peak Shear |V|<sub>max</sub></span>
+      <span class="kpi-val" style="color:var(--teal);" id="kpi-vmax">0.00 kN</span>
+      <span class="kpi-sub">Governing Shear</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Max Deflection δ<sub>max</sub></span>
+      <span class="kpi-val" style="color:var(--amber);" id="kpi-def">0.00 mm</span>
+      <span class="kpi-sub" id="kpi-span-ratio">L / —</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Total Structure Length</span>
+      <span class="kpi-val" style="color:var(--ink);" id="kpi-totL">0.00 m</span>
+      <span class="kpi-sub" id="kpi-elem-count">0 Elements</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Equilibrium (Σ F<sub>y</sub>)</span>
+      <span class="kpi-val" style="color:var(--teal);" id="kpi-equil">0.00 kN</span>
+      <span class="kpi-sub" id="kpi-equil-status">✓ Equilibrium OK</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">Axial Equilibrium (Σ F<sub>x</sub>)</span>
+      <span class="kpi-val" style="color:var(--blue);" id="kpi-equil-x">0.00 kN</span>
+      <span class="kpi-sub" id="kpi-equil-x-status">✓ Axial OK</span>
+    </div>
+  </div>
+
+  <div class="top-action-bar">
+    <div class="dashboard-tabs">
+      <button class="tab-btn active" id="btn-tab-diag" onclick="switchDashboardTab('diagTab', this)">
+        <span>📊 Analysis Diagrams</span>
+      </button>
+      <button class="tab-btn" id="btn-tab-table" onclick="switchDashboardTab('tableTab', this)">
+        <span>📑 Forces & Reactions Table</span>
+      </button>
+      <button class="tab-btn" id="btn-tab-matrix" onclick="switchDashboardTab('matrixTab', this)">
+        <span>🔢 Step-by-Step Derivation & Theory</span>
+      </button>
+    </div>
+    <div class="export-group">
+      <button class="btn-export" id="btnPdfExport" onclick="triggerCleanPrintPDF()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Print Clean PDF</span>
+      </button>
+      <button class="btn-export secondary" id="btnHtmlExport" onclick="exportFullHTMLReport()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <span>Export Standalone HTML</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="workspace-grid">
+    <div class="panel pad" id="sidebarPanel">
+      <div class="ph">
+        <span>Boundary & Span Configuration</span>
+        <span style="font-size:8.5px; color:var(--mut);">GEOMETRY / LOADS</span>
+      </div>
+
+      <div class="ctl-group">
+        <div class="ctl-title">Major Spans Count</div>
+        <div class="span-stepper-container">
+          <button class="btn-step" onclick="changeSpanCount(-1)">−</button>
+          <input type="number" id="inp-span-count" class="span-num-input" min="1" value="1" onchange="setSpanCount(parseInt(this.value) || 1)">
+          <button class="btn-step" onclick="changeSpanCount(1)">+</button>
+          <span style="font-family:var(--mono); font-size:10.5px; color:var(--mut);">Spans</span>
+        </div>
+      </div>
+
+      <div class="ctl-group">
+        <div class="ctl-title">End Boundary Conditions</div>
+        <div class="ctl">
+          <div style="margin-bottom:2px; font-size:10.5px; font-weight:600;"><label for="supp-left">Left End Support (Node A)</label></div>
+          <select id="supp-left" onchange="calculate()">
+            <option value="fixed" selected>Fixed Support (u=0, v=0, θ=0)</option>
+            <option value="pin">Pinned Support (u=0, v=0)</option>
+            <option value="roller">Roller Support (v=0)</option>
+            <option value="free">Free Cantilever</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <div style="margin-bottom:2px; font-size:10.5px; font-weight:600;"><label for="supp-right">Right End Support (End Node)</label></div>
+          <select id="supp-right" onchange="calculate()">
+            <option value="fixed" selected>Fixed Support (u=0, v=0, θ=0)</option>
+            <option value="pin">Pinned Support (u=0, v=0)</option>
+            <option value="roller">Roller Support (v=0)</option>
+            <option value="free">Free Cantilever</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ctl-group">
+        <div class="ctl-title settlement-card-head" onclick="toggleSettlementSection()" style="color:var(--amber); cursor:pointer;">
+          <span>Support Settlement / Heave (Δy)</span>
+          <button type="button" class="btn-settle-toggle" id="btn-settle-toggle">▲ HIDE</button>
+        </div>
+        <div id="settlement-body-content" style="display: block;">
+          <p style="font-size:9.5px; color:var(--mut); margin-bottom:6px;">Settlement: downward (-), Heave: upward (+), in mm:</p>
+          <div id="settlementsContainer"></div>
+        </div>
+      </div>
+
+      <div class="ctl-group">
+        <div class="ctl-title">Segments, Rigidity & Loading</div>
+        <div id="spanCardsContainer"></div>
+      </div>
+    </div>
+
+    <div id="mainDisplayArea">
+      <!-- Section 1: Diagrams -->
+      <div id="diagTab" class="tab-pane active">
+        <div class="diag-card">
+          <div class="diag-title-row">
+            <h3>SECTION 1: STRUCTURAL ANALYSIS DIAGRAMS</h3>
+            <div class="legend-inline">
+              <span class="legend-item"><span class="dot teal"></span> Shear V(x)</span>
+              <span class="legend-item"><span class="dot verm"></span> Moment M(x)</span>
+              <span class="legend-item"><span class="dot amber"></span> Deflection v(x)</span>
+              <span class="legend-item"><span class="dot blue"></span> Reactions (R_x, R_y, M)</span>
+            </div>
+          </div>
+
+          <div id="diagWrap">
+            <div id="diag"></div>
+            <div id="hudBox" class="hud-tooltip">
+              <div class="hud-header" id="hud-pos">Position x = 0.00 m</div>
+              <div class="hud-row"><span class="hud-label">Shear:</span><span class="hud-val-shear" id="hud-v">0.00 kN</span></div>
+              <div class="hud-row"><span class="hud-label">Moment:</span><span class="hud-val-moment" id="hud-m">0.00 kN·m</span></div>
+              <div class="hud-row"><span class="hud-label">Deflection:</span><span class="hud-val-def" id="hud-d">0.00 mm</span></div>
+              <div class="hud-row"><span class="hud-label">Rigidity EI:</span><span class="hud-val-ei" id="hud-ei">0.0 MN·m²</span></div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; border-top: 1px solid var(--hair); padding-top: 8px;">
+            <div style="font-family:var(--disp); font-size:10.5px; font-weight:700; color:var(--ink2); text-transform:uppercase; margin-bottom:6px;">
+              ⚡ Nodal Reactions & Active Support Restraints Summary
+            </div>
+            <div class="reax-summary-cards" id="diagReaxSummaryContainer"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Summary Tables -->
+      <div id="tableTab" class="tab-pane">
+        <div class="panel pad">
+          <div class="ph">
+            <span>SECTION 2: ELEMENT ACTIONS & REACTION SUMMARY</span>
+            <span style="font-size:8.5px; color:var(--mut);">TABULAR FORM</span>
+          </div>
+          <div id="tableSummaryContainer"></div>
+        </div>
+      </div>
+
+      <!-- Section 3: Derivation -->
+      <div id="matrixTab" class="tab-pane">
+        <div class="panel pad">
+          <div class="ph">
+            <span>SECTION 3: STEP-BY-STEP DIRECT MATRIX STIFFNESS DERIVATION</span>
+            <span style="font-size:8.5px; color:var(--mut);">DETAILED EQUATIONS</span>
+          </div>
+          <div class="step-list" id="steps-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Dialog for Full Global Stiffness Matrix Inspection -->
+<div id="matrixModal" class="matrix-modal">
+  <div class="matrix-modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid var(--ink); padding-bottom:8px; margin-bottom:10px;">
+      <h3 style="font-family:var(--disp); font-size:14px; text-transform:uppercase;">Complete Master Global Stiffness Matrix $[K]$</h3>
+      <button onclick="closeMatrixModal()" style="background:var(--verm); color:#fff; border:1px solid var(--ink); padding:4px 10px; font-weight:700; cursor:pointer;">✕ CLOSE</button>
+    </div>
+    <div id="modalMatrixContent" class="table-kasm-wrap"></div>
+  </div>
+</div>
+
+<script>
+let numSpans = 1;
+let supportSettlements = {};
+let settlementExpanded = true;
+
+let spansData = [
+  {
+    spanExpanded: true,
+    tempExpanded: false,
+    loads: [
+      { type: 'point', P: 15, theta: 90, a: 3.0, b: 0, w1: 0, w2: 0, M: 0 },
+      { type: 'point', P: 15, theta: 90, a: 6.0, b: 0, w1: 0, w2: 0, M: 0 }
+    ],
+    segments: [
+      { len: 3.0, EI: 103.5, alpha: 12, depth: 0.5, T_top: 0, T_bot: 0 },
+      { len: 3.0, EI: 43.66, alpha: 12, depth: 0.5, T_top: 0, T_bot: 0 },
+      { len: 3.0, EI: 103.5, alpha: 12, depth: 0.5, T_top: 0, T_bot: 0 }
+    ]
+  }
+];
+
+function toggleProjInfo(el) {
+  const content = document.getElementById('projInfoContent');
+  const icon = document.getElementById('proj-toggle-icon');
+  if (content.style.display === 'none') {
+    content.style.display = 'grid';
+    icon.innerText = '▲ HIDE';
+    el.classList.add('open');
+  } else {
+    content.style.display = 'none';
+    icon.innerText = '▼ SHOW';
+    el.classList.remove('open');
+  }
+}
+
+function toggleSettlementSection() {
+  settlementExpanded = !settlementExpanded;
+  const content = document.getElementById('settlement-body-content');
+  const btn = document.getElementById('btn-settle-toggle');
+  if (content && btn) {
+    if (settlementExpanded) {
+      content.style.display = 'block';
+      btn.innerText = '▲ HIDE';
+    } else {
+      content.style.display = 'none';
+      btn.innerText = '▼ SHOW';
+    }
+  }
+}
+
+function switchDashboardTab(tabId, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  
+  const target = document.getElementById(tabId);
+  if (target) target.classList.add('active');
+  if (btn) btn.classList.add('active');
+
+  if (tabId === 'diagTab') {
+    setTimeout(renderUnifiedDiagrams, 10);
+  } else {
+    renderMathJax();
+  }
+}
+
+function openMatrixModal() {
+  const modal = document.getElementById('matrixModal');
+  const sourceTable = document.querySelector('.step-global-matrix-page .table-kasm-wrap');
+  if (modal && sourceTable) {
+    document.getElementById('modalMatrixContent').innerHTML = sourceTable.innerHTML;
+    modal.style.display = 'flex';
+  }
+}
+
+function closeMatrixModal() {
+  const modal = document.getElementById('matrixModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function renderMathJax() {
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    window.MathJax.typesetPromise().catch(err => console.error('MathJax Error:', err));
+  }
+}
+
+function getSpanLength(s) {
+  return s.segments.reduce((acc, seg) => acc + seg.len, 0);
+}
+
+function getNodeLabel(index) {
+  let label = "";
+  let num = index;
+  while (num >= 0) {
+    label = String.fromCharCode((num % 26) + 65) + label;
+    num = Math.floor(num / 26) - 1;
+  }
+  return label;
+}
+
+function changeSpanCount(delta) {
+  setSpanCount(numSpans + delta);
+}
+
+function setSpanCount(n) {
+  n = Math.max(1, parseInt(n) || 1);
+  numSpans = n;
+  document.getElementById('inp-span-count').value = n;
+
+  while (spansData.length < numSpans) {
+    spansData.push({
+      spanExpanded: true,
+      tempExpanded: false,
+      loads: [{ type: 'point', P: 20, theta: 90, a: 2.0, b: 0, w1: 0, w2: 0, M: 0 }],
+      segments: [{ len: 4.0, EI: 50.0, alpha: 12, depth: 0.5, T_top: 0, T_bot: 0 }]
+    });
+  }
+
+  renderSettlementControls();
+  renderSpanControls();
+  calculate();
+}
+
+function renderSettlementControls() {
+  const cont = document.getElementById('settlementsContainer');
+  let html = '<table class="table-input-grid"><thead><tr><th>Support Node</th><th>Settlement Δy (mm)</th></tr></thead><tbody>';
+  
+  for (let i = 0; i <= numSpans; i++) {
+    const lbl = getNodeLabel(i);
+    const val = supportSettlements[i] || 0;
+    html += `
+      <tr>
+        <td style="font-weight:700;">Node ${lbl}</td>
+        <td><input type="number" step="0.5" value="${val}" placeholder="0.0" onchange="updateSettlementVal(${i}, this.value)"></td>
+      </tr>
+    `;
+  }
+  html += '</tbody></table>';
+  cont.innerHTML = html;
+}
+
+function updateSettlementVal(nodeIdx, val) {
+  let num = parseFloat(val);
+  if (isNaN(num)) num = 0;
+  supportSettlements[nodeIdx] = num;
+  calculate();
+}
+
+function addSegment(spanIdx) {
+  spansData[spanIdx].segments.push({ len: 2.0, EI: 50.0, alpha: 12, depth: 0.5, T_top: 0, T_bot: 0 });
+  renderSpanControls();
+  calculate();
+}
+
+function removeSegment(spanIdx, segIdx) {
+  if (spansData[spanIdx].segments.length <= 1) return;
+  spansData[spanIdx].segments.splice(segIdx, 1);
+  const totalL = getSpanLength(spansData[spanIdx]);
+  spansData[spanIdx].loads.forEach(ld => {
+    if (ld.a > totalL) ld.a = Math.max(0, totalL - 0.1);
+    if (ld.b > totalL) ld.b = totalL;
+  });
+  renderSpanControls();
+  calculate();
+}
+
+function addLoad(spanIdx) {
+  const totalL = getSpanLength(spansData[spanIdx]);
+  spansData[spanIdx].loads.push({
+    type: 'point',
+    P: 15,
+    theta: 90,
+    a: parseFloat(Math.min(2.0, totalL / 2).toFixed(2)),
+    b: parseFloat(Math.min(totalL, 4.0).toFixed(2)),
+    w1: 10,
+    w2: 20,
+    M: 10
+  });
+  renderSpanControls();
+  calculate();
+}
+
+function removeLoad(spanIdx, loadIdx) {
+  spansData[spanIdx].loads.splice(loadIdx, 1);
+  renderSpanControls();
+  calculate();
+}
+
+function toggleSpanCard(spanIdx) {
+  spansData[spanIdx].spanExpanded = !spansData[spanIdx].spanExpanded;
+  const content = document.getElementById(`span-content-${spanIdx}`);
+  const btn = document.getElementById(`btn-span-toggle-${spanIdx}`);
+  if (content && btn) {
+    if (spansData[spanIdx].spanExpanded) {
+      content.style.display = 'block';
+      btn.innerText = '▲ HIDE';
+    } else {
+      content.style.display = 'none';
+      btn.innerText = '▼ SHOW';
+    }
+  }
+}
+
+function toggleTemperaturePanel(spanIdx) {
+  spansData[spanIdx].tempExpanded = !spansData[spanIdx].tempExpanded;
+  const tbl = document.getElementById(`temp-table-${spanIdx}`);
+  const btn = document.getElementById(`btn-temp-toggle-${spanIdx}`);
+  if (tbl && btn) {
+    if (spansData[spanIdx].tempExpanded) {
+      tbl.style.display = 'table';
+      btn.innerText = '▲ HIDE';
+    } else {
+      tbl.style.display = 'none';
+      btn.innerText = '▼ SHOW';
+    }
+  }
+}
+
+function renderSpanControls() {
+  const c = document.getElementById('spanCardsContainer');
+  let html = '';
+
+  for (let i = 0; i < numSpans; i++) {
+    const s = spansData[i];
+    if (!s.loads) s.loads = [];
+    if (s.spanExpanded === undefined) s.spanExpanded = true;
+    if (s.tempExpanded === undefined) s.tempExpanded = false;
+    const totalL = getSpanLength(s);
+    const n1 = getNodeLabel(i);
+    const n2 = getNodeLabel(i + 1);
+
+    let segRows = '';
+    for (let j = 0; j < s.segments.length; j++) {
+      const seg = s.segments[j];
+      if (seg.alpha === undefined) seg.alpha = 12;
+      if (seg.depth === undefined) seg.depth = 0.5;
+
+      segRows += `
+      <tr>
+        <td style="text-align:center; font-weight:600;">${j+1}</td>
+        <td><input type="number" step="0.1" min="0.1" value="${seg.len}" onchange="updateSegValDirect(${i}, ${j}, 'len', this.value)"></td>
+        <td><input type="number" step="0.1" min="0.1" value="${seg.EI}" onchange="updateSegValDirect(${i}, ${j}, 'EI', this.value)"></td>
+        <td style="text-align:center;">
+          ${s.segments.length > 1 ? `<button class="btn-del-tbl" title="Delete Segment" onclick="removeSegment(${i}, ${j})">×</button>` : '—'}
+        </td>
+      </tr>`;
+    }
+
+    let tempRows = '';
+    for (let j = 0; j < s.segments.length; j++) {
+      const seg = s.segments[j];
+      tempRows += `
+      <tr>
+        <td style="text-align:center; font-weight:600;">${j+1}</td>
+        <td><input type="number" step="1" value="${seg.T_top}" onchange="updateSegValDirect(${i}, ${j}, 'T_top', this.value)"></td>
+        <td><input type="number" step="1" value="${seg.T_bot}" onchange="updateSegValDirect(${i}, ${j}, 'T_bot', this.value)"></td>
+        <td><input type="number" step="0.05" min="0.05" value="${seg.depth}" onchange="updateSegValDirect(${i}, ${j}, 'depth', this.value)"></td>
+        <td><input type="number" step="1" min="1" value="${seg.alpha}" onchange="updateSegValDirect(${i}, ${j}, 'alpha', this.value)"></td>
+      </tr>`;
+    }
+
+    let loadRows = '';
+    for (let k = 0; k < s.loads.length; k++) {
+      const ld = s.loads[k];
+      if (ld.type === undefined) ld.type = 'point';
+      if (ld.theta === undefined) ld.theta = 90;
+      if (ld.w1 === undefined) ld.w1 = 10;
+      if (ld.w2 === undefined) ld.w2 = 20;
+      if (ld.b === undefined) ld.b = totalL;
+      if (ld.M === undefined) ld.M = 10;
+
+      let paramInputs = '';
+      let badgeHtml = '';
+
+      if (ld.type === 'point') {
+        const rad = (ld.theta * Math.PI) / 180;
+        const Px = (ld.P * Math.cos(rad)).toFixed(1);
+        const Py = (ld.P * Math.sin(rad)).toFixed(1);
+        badgeHtml = `<span class="load-badge point">🎯 POINT</span>`;
+        paramInputs = `
+          <div class="field-chip-group">
+            <div class="field-chip" title="Total Magnitude (kN)"><label>P:</label><input type="number" step="1" value="${ld.P}" onchange="updateLoadParam(${i}, ${k}, 'P', this.value)"></div>
+            <div class="field-chip" title="Angle from +X axis"><label>θ°:</label><input type="number" step="5" min="0" max="180" value="${ld.theta}" onchange="updateLoadParam(${i}, ${k}, 'theta', this.value)"></div>
+            <div class="field-chip" title="Location (m)"><label>x:</label><input type="number" step="0.1" min="0" max="${totalL}" value="${ld.a}" onchange="updateLoadParam(${i}, ${k}, 'a', this.value)"></div>
+            <span style="font-size:9px; font-weight:700; color:var(--teal); margin-left:auto;">${Py}↓ ${Px}→</span>
+          </div>
+        `;
+      } else if (ld.type === 'uvl') {
+        badgeHtml = `<span class="load-badge uvl">📐 UVL</span>`;
+        paramInputs = `
+          <div class="field-chip-group">
+            <div class="field-chip" title="Start w1 (kN/m)"><label>w₁:</label><input type="number" step="1" value="${ld.w1}" onchange="updateLoadParam(${i}, ${k}, 'w1', this.value)"></div>
+            <div class="field-chip" title="End w2 (kN/m)"><label>w₂:</label><input type="number" step="1" value="${ld.w2}" onchange="updateLoadParam(${i}, ${k}, 'w2', this.value)"></div>
+            <div class="field-chip" title="Start x1 (m)"><label>x₁:</label><input type="number" step="0.1" min="0" max="${totalL}" value="${ld.a}" onchange="updateLoadParam(${i}, ${k}, 'a', this.value)"></div>
+            <div class="field-chip" title="End x2 (m)"><label>x₂:</label><input type="number" step="0.1" min="0" max="${totalL}" value="${ld.b}" onchange="updateLoadParam(${i}, ${k}, 'b', this.value)"></div>
+          </div>
+        `;
+      } else if (ld.type === 'moment') {
+        badgeHtml = `<span class="load-badge moment">🔄 MOMENT</span>`;
+        paramInputs = `
+          <div class="field-chip-group">
+            <div class="field-chip" title="Moment (+CCW / -CW) (kN·m)"><label>M:</label><input type="number" step="1" value="${ld.M}" onchange="updateLoadParam(${i}, ${k}, 'M', this.value)"></div>
+            <div class="field-chip" title="Location (m)"><label>x:</label><input type="number" step="0.1" min="0" max="${totalL}" value="${ld.a}" onchange="updateLoadParam(${i}, ${k}, 'a', this.value)"></div>
+          </div>
+        `;
+      }
+
+      loadRows += `
+      <tr class="load-item-row">
+        <td style="width:24px; text-align:center; font-weight:700; color:var(--mut); font-size:9.5px;">${k+1}</td>
+        <td style="width:110px; vertical-align:middle;">
+          <div style="display:flex; flex-direction:column; gap:2px;">
+            ${badgeHtml}
+            <select onchange="updateLoadType(${i}, ${k}, this.value)" style="font-weight:600; font-size:9.5px;">
+              <option value="point" ${ld.type === 'point' ? 'selected' : ''}>🎯 Point / Angled</option>
+              <option value="uvl" ${ld.type === 'uvl' ? 'selected' : ''}>📐 UVL / Partial</option>
+              <option value="moment" ${ld.type === 'moment' ? 'selected' : ''}>🔄 Moment (M)</option>
+            </select>
+          </div>
+        </td>
+        <td style="vertical-align:middle;">${paramInputs}</td>
+        <td style="width:22px; text-align:center;">
+          <button class="btn-del-tbl" title="Delete Load" onclick="removeLoad(${i}, ${k})">×</button>
+        </td>
+      </tr>`;
+    }
+
+    html += `
+    <div class="span-card-box">
+      <div class="span-card-head" onclick="toggleSpanCard(${i})">
+        <span>Span ${i + 1} (${n1}${n2})</span>
+        <div style="display:inline-flex; align-items:center; gap:6px;">
+          <span id="badge-head-L-${i}">L = ${totalL.toFixed(2)} m</span>
+          <button type="button" class="btn-span-toggle" id="btn-span-toggle-${i}">
+            ${s.spanExpanded ? '▲ HIDE' : '▼ SHOW'}
+          </button>
+        </div>
+      </div>
+
+      <div id="span-content-${i}" style="display: ${s.spanExpanded ? 'block' : 'none'};">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; margin-top:2px;">
+          <span style="font-family:var(--mono); font-size:10px; font-weight:700; color:var(--ink2);">SUB-SEGMENTS & RIGIDITY (EI)</span>
+          <button class="btn-seg-ctrl" onclick="addSegment(${i})">+ Add Segment</button>
+        </div>
+        <table class="table-input-grid">
+          <thead>
+            <tr>
+              <th style="width:24px; text-align:center;">#</th>
+              <th>Length (m)</th>
+              <th>EI (MN·m²)</th>
+              <th style="width:28px; text-align:center;">Act</th>
+            </tr>
+          </thead>
+          <tbody>${segRows}</tbody>
+        </table>
+
+        <div class="temp-toggle-bar" onclick="toggleTemperaturePanel(${i})">
+          <span style="font-family:var(--mono); font-size:10px; font-weight:700; color:var(--purple); display:inline-flex; align-items:center; gap:4px;">
+            🌡️ TEMPERATURE GRADIENT (ΔT)
+          </span>
+          <button type="button" class="btn-temp-toggle" id="btn-temp-toggle-${i}">
+            ${s.tempExpanded ? '▲ HIDE' : '▼ SHOW'}
+          </button>
+        </div>
+        <table class="table-input-grid" id="temp-table-${i}" style="display: ${s.tempExpanded ? 'table' : 'none'};">
+          <thead>
+            <tr>
+              <th style="width:22px; text-align:center;">#</th>
+              <th>T_top (°C)</th>
+              <th>T_bot (°C)</th>
+              <th>Depth h (m)</th>
+              <th>α (×10⁻⁶/°C)</th>
+            </tr>
+          </thead>
+          <tbody>${tempRows}</tbody>
+        </table>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; margin-top:8px;">
+          <span style="font-family:var(--mono); font-size:10px; font-weight:700; color:var(--teal);">SPAN LOADS & ACTIONS</span>
+          <button class="btn-add-load" onclick="addLoad(${i})">+ Add Load</button>
+        </div>
+        <table class="table-input-grid">
+          <thead>
+            <tr>
+              <th style="width:24px; text-align:center;">#</th>
+              <th>Category</th>
+              <th>Values & Coordinates</th>
+              <th style="text-align:center; width:22px;">Act</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${loadRows.length > 0 ? loadRows : '<tr><td colspan="4" style="text-align:center; color:var(--mut); font-style:italic;">No loads applied on this span</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+  c.innerHTML = html;
+}
+
+function updateLoadType(spanIdx, loadIdx, type) {
+  spansData[spanIdx].loads[loadIdx].type = type;
+  renderSpanControls();
+  calculate();
+}
+
+function updateLoadParam(spanIdx, loadIdx, key, val) {
+  let num = parseFloat(val);
+  if (isNaN(num)) num = 0;
+  const totalL = getSpanLength(spansData[spanIdx]);
+
+  if (key === 'a' || key === 'b') {
+    num = Math.max(0, Math.min(totalL, num));
+  }
+  spansData[spanIdx].loads[loadIdx][key] = num;
+  
+  if (key === 'P' || key === 'theta') {
+    renderSpanControls();
+  }
+  calculate();
+}
+
+function updateSegValDirect(spanIdx, segIdx, key, val) {
+  let num = parseFloat(val);
+  if (isNaN(num)) return;
+  if (key === 'len' && num <= 0) num = 0.1;
+  if (key === 'EI' && num <= 0) num = 0.1;
+  if (key === 'depth' && num <= 0) num = 0.05;
+
+  spansData[spanIdx].segments[segIdx][key] = num;
+  const totalL = getSpanLength(spansData[spanIdx]);
+  spansData[spanIdx].loads.forEach(ld => {
+    if (ld.a > totalL) ld.a = totalL;
+    if (ld.b > totalL) ld.b = totalL;
+  });
+
+  const badge = document.getElementById(`badge-head-L-${spanIdx}`);
+  if (badge) badge.innerText = `L = ${totalL.toFixed(2)} m`;
+  calculate();
+}
+
+const fmt = (v, d = 2) => {
+  if (!isFinite(v)) return '—';
+  const neg = v < -1e-7;
+  const s = Math.abs(v).toFixed(d);
+  return (neg ? '-' : '') + s;
+};
+
+const sci = (v, d = 3) => {
+  if (!isFinite(v)) return '—';
+  if (Math.abs(v) < 1e-12) return '0';
+  const e = Math.floor(Math.log10(Math.abs(v)));
+  const m = v / (10 ** e);
+  return `${m < 0 ? '-' : ''}${Math.abs(m).toFixed(d)} \\times 10^{${e}}`;
+};
+
+function formatTeXMatrix(mat, precision = 1) {
+  return '\\begin{bmatrix}' + mat.map(row => row.map(v => fmt(v, precision)).join(' & ')).join(' \\\\ ') + '\\end{bmatrix}';
+}
+
+let BeamState = null;
+
+function calculate() {
+  const suppLeft = document.getElementById('supp-left').value;
+  const suppRight = document.getElementById('supp-right').value;
+
+  let elements = [];
+  let globalNodes = [{ x: 0, isSupport: true, supportIdx: 0, label: getNodeLabel(0) }];
+  let currentX = 0;
+  let spanBoundaryNodeIndices = [0];
+
+  for (let i = 0; i < numSpans; i++) {
+    const s = spansData[i];
+    if (!s.loads) s.loads = [];
+    const spanStartX = currentX;
+    
+    for (let j = 0; j < s.segments.length; j++) {
+      const seg = s.segments[j];
+      const startX = currentX;
+      const endX = currentX + seg.len;
+      currentX = endX;
+      
+      const isEndSpanNode = (j === s.segments.length - 1);
+      const isLastElementOfAll = (i === numSpans - 1 && j === s.segments.length - 1);
+      const nodeObj = {
+        x: currentX,
+        isSupport: isEndSpanNode,
+        supportIdx: isEndSpanNode ? (i + 1) : -1,
+        label: isEndSpanNode ? getNodeLabel(i + 1) : `N_{${i+1}.${j+1}}`
+      };
+      globalNodes.push(nodeObj);
+
+      const elemPointLoads = [];
+      const elemMomentLoads = [];
+      const elemUVLs = [];
+
+      s.loads.forEach(ld => {
+        if (ld.type === 'point') {
+          const globalLoadX = spanStartX + ld.a;
+          const inElement = isLastElementOfAll 
+            ? (globalLoadX >= startX - 1e-6 && globalLoadX <= endX + 1e-6)
+            : (globalLoadX >= startX - 1e-6 && globalLoadX < endX - 1e-6);
+
+          if (inElement && Math.abs(ld.P) > 1e-6) {
+            const rad = ((ld.theta || 90) * Math.PI) / 180;
+            const Px = ld.P * Math.cos(rad);
+            const Py = ld.P * Math.sin(rad);
+            elemPointLoads.push({
+              P: Py,
+              Px: Px,
+              a: Math.max(0, Math.min(seg.len, globalLoadX - startX)),
+              globalX: globalLoadX
+            });
+          }
+        } else if (ld.type === 'moment') {
+          const globalLoadX = spanStartX + ld.a;
+          const inElement = isLastElementOfAll 
+            ? (globalLoadX >= startX - 1e-6 && globalLoadX <= endX + 1e-6)
+            : (globalLoadX >= startX - 1e-6 && globalLoadX < endX - 1e-6);
+
+          if (inElement && Math.abs(ld.M) > 1e-6) {
+            elemMomentLoads.push({
+              M: ld.M,
+              a: Math.max(0, Math.min(seg.len, globalLoadX - startX)),
+              globalX: globalLoadX
+            });
+          }
+        } else if (ld.type === 'uvl') {
+          const globalA = spanStartX + Math.min(ld.a, ld.b);
+          const globalB = spanStartX + Math.max(ld.a, ld.b);
+          const overlapStart = Math.max(startX, globalA);
+          const overlapEnd = Math.min(endX, globalB);
+
+          if (overlapEnd > overlapStart + 1e-6) {
+            const totalLoadSpan = Math.max(1e-5, globalB - globalA);
+            const wStartLocal = ld.w1 + (ld.w2 - ld.w1) * ((overlapStart - globalA) / totalLoadSpan);
+            const wEndLocal = ld.w1 + (ld.w2 - ld.w1) * ((overlapEnd - globalA) / totalLoadSpan);
+
+            elemUVLs.push({
+              a: overlapStart - startX,
+              b: overlapEnd - startX,
+              w1: wStartLocal,
+              w2: wEndLocal,
+              globalA: overlapStart,
+              globalB: overlapEnd
+            });
+          }
+        }
+      });
+
+      elements.push({
+        spanIdx: i,
+        segIdx: j,
+        L: seg.len,
+        EI: seg.EI * 1000,
+        EI_raw: seg.EI,
+        EA: 500 * 1000,
+        alpha: (seg.alpha || 12) * 1e-6,
+        alpha_raw: seg.alpha || 12,
+        depth: seg.depth || 0.5,
+        T_top: seg.T_top || 0,
+        T_bot: seg.T_bot || 0,
+        x1: startX,
+        x2: endX,
+        pointLoads: elemPointLoads,
+        momentLoads: elemMomentLoads,
+        uvlLoads: elemUVLs
+      });
+    }
+    spanBoundaryNodeIndices.push(globalNodes.length - 1);
+  }
+
+  const numElements = elements.length;
+  const numNodes = globalNodes.length;
+  const totalDOFs = numNodes * 3;
+  const totalL = currentX;
+
+  document.getElementById('tb-spans').innerText = `${numSpans} SPAN${numSpans > 1 ? 'S' : ''} / ${numNodes} NODES (${numElements} ELEMS)`;
+
+  let isConstrained = Array(totalDOFs).fill(false);
+  let prescribedDisplacements = Array(totalDOFs).fill(0);
+
+  if (suppLeft === 'fixed') { isConstrained[0] = true; isConstrained[1] = true; isConstrained[2] = true; }
+  else if (suppLeft === 'pin') { isConstrained[0] = true; isConstrained[1] = true; isConstrained[2] = false; }
+  else if (suppLeft === 'roller') { isConstrained[0] = false; isConstrained[1] = true; isConstrained[2] = false; }
+  else if (suppLeft === 'free') { isConstrained[0] = false; isConstrained[1] = false; isConstrained[2] = false; }
+
+  for (let i = 1; i < numNodes - 1; i++) {
+    if (globalNodes[i].isSupport) {
+      isConstrained[3 * i] = false;
+      isConstrained[3 * i + 1] = true;
+      isConstrained[3 * i + 2] = false;
+    }
+  }
+
+  const lastIdx = numNodes - 1;
+  if (suppRight === 'fixed') { isConstrained[3 * lastIdx] = true; isConstrained[3 * lastIdx + 1] = true; isConstrained[3 * lastIdx + 2] = true; }
+  else if (suppRight === 'pin') { isConstrained[3 * lastIdx] = true; isConstrained[3 * lastIdx + 1] = true; isConstrained[3 * lastIdx + 2] = false; }
+  else if (suppRight === 'roller') { isConstrained[3 * lastIdx] = false; isConstrained[3 * lastIdx + 1] = true; isConstrained[3 * lastIdx + 2] = false; }
+  else if (suppRight === 'free') { isConstrained[3 * lastIdx] = false; isConstrained[3 * lastIdx + 1] = false; isConstrained[3 * lastIdx + 2] = false; }
+
+  for (let i = 0; i < numNodes; i++) {
+    const gn = globalNodes[i];
+    if (gn.isSupport && gn.supportIdx >= 0) {
+      const settMM = supportSettlements[gn.supportIdx] || 0;
+      if (isConstrained[3 * i + 1]) {
+        prescribedDisplacements[3 * i + 1] = settMM / 1000.0;
+      }
+    }
+  }
+
+  const unconstrainedDOFs = [];
+  const constrainedDOFs = [];
+  for (let i = 0; i < totalDOFs; i++) {
+    if (isConstrained[i]) constrainedDOFs.push(i);
+    else unconstrainedDOFs.push(i);
+  }
+  const Dk = unconstrainedDOFs.length;
+
+  const dofNames = [];
+  for (let i = 0; i < numNodes; i++) {
+    dofNames.push(`u_{${globalNodes[i].label}}`);
+    dofNames.push(`v_{${globalNodes[i].label}}`);
+    dofNames.push(`\\theta_{${globalNodes[i].label}}`);
+  }
+
+  document.getElementById('tb-dof').innerText = `${Dk} ACTIVE (${unconstrainedDOFs.map(i => dofNames[i].replace('\\theta', 'θ')).join(', ')})`;
+
+  let elemMatrices = [];
+  let elemCoeffs = [];
+  for (let i = 0; i < numElements; i++) {
+    const el = elements[i];
+    const L = el.L;
+    const EI = el.EI;
+    const EA = el.EA;
+    const k_ax = EA / L;
+    const k11 = 12 * EI / (L ** 3);
+    const k12 = 6 * EI / (L ** 2);
+    const k22 = 4 * EI / L;
+    const k24 = 2 * EI / L;
+    elemCoeffs.push({ k_ax, k11, k12, k22, k24, L, EI: el.EI_raw });
+    elemMatrices.push([
+      [ k_ax,  0,    0,   -k_ax,  0,    0   ],
+      [ 0,    k11,  k12,  0,    -k11,  k12  ],
+      [ 0,    k12,  k22,  0,    -k12,  k24  ],
+      [-k_ax,  0,    0,    k_ax,  0,    0   ],
+      [ 0,   -k11, -k12,  0,     k11, -k12  ],
+      [ 0,    k12,  k24,  0,    -k12,  k22  ]
+    ]);
+  }
+
+  let f_fem_list = [];
+  let PF = Array(totalDOFs).fill(0);
+
+  for (let i = 0; i < numElements; i++) {
+    const el = elements[i];
+    const L = el.L;
+
+    let fem_M_N = 0;
+    let fem_M_F = 0;
+    let fem_V_N = 0;
+    let fem_N_N = 0;
+    let fem_N_F = 0;
+    let totalP = 0;
+    let totalPx = 0;
+
+    el.pointLoads.forEach(pl => {
+      const a = pl.a;
+      const b = L - a;
+      fem_M_N += (pl.P * a * b * b / (L * L));
+      fem_M_F -= (pl.P * a * a * b / (L * L));
+      fem_V_N += (pl.P * b / L);
+      totalP += pl.P;
+
+      fem_N_N += (pl.Px * b / L);
+      fem_N_F += (pl.Px * a / L);
+      totalPx += pl.Px;
+    });
+
+    el.momentLoads.forEach(ml => {
+      const a = ml.a;
+      const b = L - a;
+      fem_M_N += (ml.M * b / (L * L)) * (2 * a - b);
+      fem_M_F += (ml.M * a / (L * L)) * (2 * b - a);
+      fem_V_N += (-6 * ml.M * a * b) / (L ** 3);
+    });
+
+    el.uvlLoads.forEach(uvl => {
+      const nSteps = 60;
+      const dx = (uvl.b - uvl.a) / nSteps;
+      for (let s = 0; s < nSteps; s++) {
+        const xMid = uvl.a + (s + 0.5) * dx;
+        const wVal = uvl.w1 + (uvl.w2 - uvl.w1) * ((xMid - uvl.a) / (uvl.b - uvl.a));
+        const dP = wVal * dx;
+        const a_i = xMid;
+        const b_i = L - a_i;
+        fem_M_N += (dP * a_i * b_i * b_i / (L * L));
+        fem_M_F -= (dP * a_i * a_i * b_i / (L * L));
+        fem_V_N += (dP * b_i / L);
+        totalP += dP;
+      }
+    });
+
+    const deltaT = (el.T_bot - el.T_top);
+    const phi_0 = (el.alpha * deltaT) / el.depth;
+    const M_T = el.EI * phi_0;
+    fem_M_N += -M_T;
+    fem_M_F += M_T;
+
+    let V_stat = 0;
+    el.pointLoads.forEach(pl => { V_stat += pl.P * (L - pl.a) / L; });
+    el.momentLoads.forEach(ml => { V_stat += ml.M / L; });
+    el.uvlLoads.forEach(uvl => {
+      const segLen = uvl.b - uvl.a;
+      const area = 0.5 * (uvl.w1 + uvl.w2) * segLen;
+      const xCentroid = uvl.a + (segLen * (uvl.w1 + 2 * uvl.w2)) / (3 * (uvl.w1 + uvl.w2));
+      V_stat += area * (L - xCentroid) / L;
+    });
+
+    fem_V_N = V_stat + ((fem_M_N + fem_M_F) / L);
+    const fem_V_F = totalP - fem_V_N;
+
+    const fem_vec = [fem_N_N, fem_V_N, fem_M_N, fem_N_F, fem_V_F, fem_M_F];
+    f_fem_list.push(fem_vec);
+
+    const map = [3 * i, 3 * i + 1, 3 * i + 2, 3 * i + 3, 3 * i + 4, 3 * i + 5];
+    for (let k = 0; k < 6; k++) {
+      PF[map[k]] += fem_vec[k];
+    }
+  }
+
+  const P_eq = PF.map(p => -p);
+
+  let K_global = Array(totalDOFs).fill(0).map(() => Array(totalDOFs).fill(0));
+  for (let i = 0; i < numElements; i++) {
+    const k_e = elemMatrices[i];
+    const map = [3 * i, 3 * i + 1, 3 * i + 2, 3 * i + 3, 3 * i + 4, 3 * i + 5];
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        K_global[map[r]][map[c]] += k_e[r][c];
+      }
+    }
+  }
+
+  const mulMatVec = (M, v) => M.map(row => row.reduce((sum, val, idx) => sum + val * v[idx], 0));
+
+  let K_UU = unconstrainedDOFs.map(r => unconstrainedDOFs.map(c => K_global[r][c]));
+  let K_UK = unconstrainedDOFs.map(r => constrainedDOFs.map(c => K_global[r][c]));
+  let K_KU = constrainedDOFs.map(r => unconstrainedDOFs.map(c => K_global[r][c]));
+  let K_KK = constrainedDOFs.map(r => constrainedDOFs.map(c => K_global[r][c]));
+
+  let P_U = unconstrainedDOFs.map(r => P_eq[r]);
+  let P_FK = constrainedDOFs.map(r => PF[r]);
+  let D_K = constrainedDOFs.map(r => prescribedDisplacements[r]);
+
+  const K_UK_DK = mulMatVec(K_UK, D_K);
+  const P_eff = P_U.map((p, idx) => p - K_UK_DK[idx]);
+
+  const D_U = solveMatrix(K_UU, P_eff);
+  
+  let D_global = Array(totalDOFs).fill(0);
+  unconstrainedDOFs.forEach((dof, idx) => {
+    D_global[dof] = D_U[idx];
+  });
+  constrainedDOFs.forEach((dof, idx) => {
+    D_global[dof] = D_K[idx];
+  });
+
+  let memberActions = [];
+  for (let i = 0; i < numElements; i++) {
+    const map = [3 * i, 3 * i + 1, 3 * i + 2, 3 * i + 3, 3 * i + 4, 3 * i + 5];
+    const d_elem = map.map(dof => D_global[dof]);
+    const kd = mulMatVec(elemMatrices[i], d_elem);
+    const f_elem = kd.map((val, k) => val + f_fem_list[i][k]);
+    memberActions.push(f_elem);
+  }
+
+  const K_KU_DU = mulMatVec(K_KU, D_U);
+  const K_KK_DK = mulMatVec(K_KK, D_K);
+  const R_vector = K_KU_DU.map((val, i) => val + K_KK_DK[i] + P_FK[i]);
+  
+  let reactionsByDOF = {};
+  constrainedDOFs.forEach((dof, idx) => {
+    reactionsByDOF[dof] = R_vector[idx];
+  });
+
+  const getElemIndex = (x) => {
+    for (let i = 0; i < numElements; i++) {
+      if (x <= elements[i].x2 + 1e-9) return i;
+    }
+    return numElements - 1;
+  };
+
+  const getV = (x) => {
+    const i = getElemIndex(x);
+    const el = elements[i];
+    const xLocal = x - el.x1;
+    let V = memberActions[i][1];
+    
+    el.pointLoads.forEach(pl => {
+      if (xLocal >= pl.a) V -= pl.P;
+    });
+
+    el.uvlLoads.forEach(uvl => {
+      if (xLocal > uvl.a) {
+        const xCover = Math.min(xLocal, uvl.b) - uvl.a;
+        const wEndCoverage = uvl.w1 + (uvl.w2 - uvl.w1) * (xCover / (uvl.b - uvl.a));
+        const coveredForce = 0.5 * (uvl.w1 + wEndCoverage) * xCover;
+        V -= coveredForce;
+      }
+    });
+    return V;
+  };
+
+  const getM = (x) => {
+    const i = getElemIndex(x);
+    const el = elements[i];
+    const xLocal = x - el.x1;
+    const V_left = memberActions[i][1];
+    const M_left = memberActions[i][2];
+    let M = -M_left + V_left * xLocal;
+
+    el.pointLoads.forEach(pl => {
+      if (xLocal >= pl.a) M -= pl.P * (xLocal - pl.a);
+    });
+    el.momentLoads.forEach(ml => {
+      if (xLocal >= ml.a) M += ml.M;
+    });
+    el.uvlLoads.forEach(uvl => {
+      if (xLocal > uvl.a) {
+        const xCover = Math.min(xLocal, uvl.b) - uvl.a;
+        const wEndCoverage = uvl.w1 + (uvl.w2 - uvl.w1) * (xCover / (uvl.b - uvl.a));
+        const rectPart = uvl.w1 * xCover * (xLocal - (uvl.a + xCover / 2));
+        const triPart = 0.5 * (wEndCoverage - uvl.w1) * xCover * (xLocal - (uvl.a + 2 * xCover / 3));
+        M -= (rectPart + triPart);
+      }
+    });
+    return M;
+  };
+
+  const getEI = (x) => {
+    const i = getElemIndex(x);
+    return elements[i].EI_raw;
+  };
+
+  const getDef = (x) => {
+    const i = getElemIndex(x);
+    const el = elements[i];
+    const L = el.L;
+    const EI = el.EI;
+    const xLocal = Math.max(0, Math.min(L, x - el.x1));
+    const vN = D_global[3 * i + 1];
+    const thN = D_global[3 * i + 2];
+    const vF = D_global[3 * i + 4];
+    const thF = D_global[3 * i + 5];
+
+    const xi = xLocal / L;
+    const N1 = 1 - 3 * xi * xi + 2 * xi * xi * xi;
+    const N2 = L * (xi - 2 * xi * xi + xi * xi * xi);
+    const N3 = 3 * xi * xi - 2 * xi * xi * xi;
+    const N4 = L * (-xi * xi + xi * xi * xi);
+
+    const v_nodal = N1 * vN + N2 * thN + N3 * vF + N4 * thF;
+    
+    let v_p_sum = 0;
+    el.pointLoads.forEach(pl => {
+      const a = pl.a;
+      const b = L - a;
+      if (xLocal <= a) {
+        v_p_sum += -(pl.P * b * b * xLocal * xLocal / (6 * EI * (L ** 3))) * (3 * a * L - (3 * a + b) * xLocal);
+      } else {
+        const xPrime = L - xLocal;
+        v_p_sum += -(pl.P * a * a * xPrime * xPrime / (6 * EI * (L ** 3))) * (3 * b * L - (3 * b + a) * xPrime);
+      }
+    });
+
+    let v_m_sum = 0;
+    el.momentLoads.forEach(ml => {
+      const a = ml.a;
+      const b = L - a;
+      if (xLocal <= a) {
+        v_m_sum += (ml.M * b * xLocal * xLocal / (2 * EI * (L ** 3))) * (2 * a * L - (2 * a + b) * xLocal);
+      } else {
+        const xPrime = L - xLocal;
+        v_m_sum += -(ml.M * a * xPrime * xPrime / (2 * EI * (L ** 3))) * (2 * b * L - (2 * b + a) * xPrime);
+      }
+    });
+
+    el.uvlLoads.forEach(uvl => {
+      const nSteps = 30;
+      const dx = (uvl.b - uvl.a) / nSteps;
+      for (let s = 0; s < nSteps; s++) {
+        const xMid = uvl.a + (s + 0.5) * dx;
+        const wVal = uvl.w1 + (uvl.w2 - uvl.w1) * ((xMid - uvl.a) / (uvl.b - uvl.a));
+        const dP = wVal * dx;
+        const a_i = xMid;
+        const b_i = L - a_i;
+        if (xLocal <= a_i) {
+          v_p_sum += -(dP * b_i * b_i * xLocal * xLocal / (6 * EI * (L ** 3))) * (3 * a_i * L - (3 * a_i + b_i) * xLocal);
+        } else {
+          const xPrime = L - xLocal;
+          v_p_sum += -(dP * a_i * a_i * xPrime * xPrime / (6 * EI * (L ** 3))) * (3 * b_i * L - (3 * b_i + a_i) * xPrime);
+        }
+      }
+    });
+
+    const deltaT = (el.T_bot - el.T_top);
+    const phi_0 = (el.alpha * deltaT) / el.depth;
+    const v_temp = (phi_0 * xLocal * (L - xLocal)) / 2;
+
+    return (v_nodal + v_p_sum + v_m_sum + v_temp) * 1000;
+  };
+
+  let maxM = -Infinity, minM = Infinity;
+  let maxV = -Infinity, minV = Infinity;
+  let maxDef = 0;
+  const evalSteps = Math.max(600, numElements * 150);
+  for (let i = 0; i <= evalSteps; i++) {
+    const x = (i / evalSteps) * totalL;
+    const vVal = getV(x);
+    const mVal = getM(x);
+    const dVal = getDef(x);
+    if (vVal > maxV) maxV = vVal;
+    if (vVal < minV) minV = vVal;
+    if (mVal > maxM) maxM = mVal;
+    if (mVal < minM) minM = minM < mVal ? minM : mVal;
+    if (Math.abs(dVal) > Math.abs(maxDef)) maxDef = dVal;
+  }
+
+  let totalReaxY = 0;
+  let totalReaxX = 0;
+  for (let i = 0; i < numNodes; i++) {
+    const dofU = 3 * i;
+    const dofV = 3 * i + 1;
+    if (isConstrained[dofU]) totalReaxX += (reactionsByDOF[dofU] || 0);
+    if (isConstrained[dofV]) totalReaxY += (reactionsByDOF[dofV] || 0);
+  }
+
+  let totalAppliedY = 0;
+  let totalAppliedX = 0;
+  for (let i = 0; i < numElements; i++) {
+    const el = elements[i];
+    const sumP = el.pointLoads.reduce((acc, p) => acc + p.P, 0);
+    const sumPx = el.pointLoads.reduce((acc, p) => acc + (p.Px || 0), 0);
+    let sumUVL = 0;
+    el.uvlLoads.forEach(uvl => {
+      sumUVL += 0.5 * (uvl.w1 + uvl.w2) * (uvl.b - uvl.a);
+    });
+    totalAppliedY += sumP + sumUVL;
+    totalAppliedX += sumPx;
+  }
+  const diffY = Math.abs(totalReaxY - totalAppliedY);
+  const diffX = Math.abs(totalReaxX - totalAppliedX);
+
+  const absPeakM = Math.max(Math.abs(maxM), Math.abs(minM));
+  const absPeakV = Math.max(Math.abs(maxV), Math.abs(minV));
+  document.getElementById('kpi-mmax').innerText = absPeakM.toFixed(2) + ' kN·m';
+  document.getElementById('kpi-vmax').innerText = absPeakV.toFixed(2) + ' kN';
+  document.getElementById('kpi-def').innerText = Math.abs(maxDef).toFixed(2) + ' mm';
+  document.getElementById('kpi-totL').innerText = totalL.toFixed(2) + ' m';
+  document.getElementById('kpi-elem-count').innerText = `${numElements} Rigidity Elements`;
+
+  const spanDefRatio = Math.abs(maxDef) > 1e-4 ? Math.round((totalL * 1000) / Math.abs(maxDef)) : 0;
+  document.getElementById('kpi-span-ratio').innerText = spanDefRatio > 0 ? `L / ${spanDefRatio}` : 'Negligible';
+
+  const equilStatus = document.getElementById('kpi-equil-status');
+  const equilVal = document.getElementById('kpi-equil');
+  equilVal.innerText = `${totalReaxY.toFixed(2)} kN`;
+  if (diffY < 0.05) {
+    equilStatus.innerText = '✓ ΣFy Equilibrium OK';
+    equilStatus.style.color = 'var(--teal)';
+  } else {
+    equilStatus.innerText = `⚠ Diff: ${diffY.toFixed(2)} kN`;
+    equilStatus.style.color = 'var(--verm)';
+  }
+
+  const equilXStatus = document.getElementById('kpi-equil-x-status');
+  const equilXVal = document.getElementById('kpi-equil-x');
+  equilXVal.innerText = `${totalReaxX.toFixed(2)} kN`;
+  if (diffX < 0.05) {
+    equilXStatus.innerText = '✓ ΣFx Equilibrium OK';
+    equilXStatus.style.color = 'var(--blue)';
+  } else {
+    equilXStatus.innerText = `⚠ Diff: ${diffX.toFixed(2)} kN`;
+    equilXStatus.style.color = 'var(--verm)';
+  }
+
+  BeamState = {
+    numSpans, numNodes, numElements, totalDOFs, totalL,
+    globalNodes, elements, spanBoundaryNodeIndices,
+    suppLeft, suppRight,
+    isConstrained, unconstrainedDOFs, constrainedDOFs, Dk, dofNames,
+    prescribedDisplacements,
+    elemCoeffs, elemMatrices,
+    f_fem_list, PF, P_eq,
+    K_global, K_UU, K_UK, K_KU, K_KK, P_U, P_FK, D_K, P_eff,
+    D_U, D_global,
+    memberActions,
+    reactionsByDOF,
+    getV, getM, getDef, getEI,
+    maxV, minV, maxM, minM, maxDef,
+    totalReaxY, totalAppliedY, diffY,
+    totalReaxX, totalAppliedX, diffX
+  };
+
+  renderUnifiedDiagrams();
+  renderMatrixSteps(BeamState);
+  renderElementTable(BeamState);
+  renderMathJax();
+}
+
+let DiagContext = null;
+
+function renderUnifiedDiagrams() {
+  if (!BeamState) return;
+  const host = document.getElementById('diag');
+  const wrap = document.getElementById('diagWrap');
+  const W = Math.max(640, wrap.clientWidth || 880);
+  const padL = 70, padR = 70;
+  const plotW = W - padL - padR;
+  const totalL = BeamState.totalL;
+
+  const X = x => padL + (x / totalL) * plotW;
+
+  const P1 = { top: 6,   tt: 16,  pt: 30,  pb: 105 };
+  const P2 = { top: 115, tt: 125, pt: 135, pb: 215 };
+  const P3 = { top: 225, tt: 235, pt: 245, pb: 330 };
+  const P4 = { top: 340, tt: 350, pt: 360, pb: 435 };
+  const P5 = { top: 445, tt: 455, pt: 465, pb: 575 };
+  const H = 590;
+
+  const absV = Math.max(Math.abs(BeamState.maxV), Math.abs(BeamState.minV), 5);
+  const scaleY_V = (P2.pb - P2.pt - 14) / (2 * absV);
+  const zeroY_V = P2.pt + (P2.pb - P2.pt) / 2;
+  const yV = v => zeroY_V - v * scaleY_V;
+
+  const absM = Math.max(Math.abs(BeamState.maxM), Math.abs(BeamState.minM), 5);
+  const scaleY_M = (P3.pb - P3.pt - 14) / (2 * absM);
+  const zeroY_M = P3.pt + (P3.pb - P3.pt) / 2;
+  const yM = m => zeroY_M - m * scaleY_M;
+
+  const absD = Math.max(Math.abs(BeamState.maxDef), 0.01);
+  const scaleY_D = (P4.pb - P4.pt - 16) / (2 * absD);
+  const zeroY_D = P4.pt + 16;
+  const yD = d => zeroY_D - d * scaleY_D;
+
+  const zeroY_R = P5.pt + 54;
+  const beamY = P1.pb - 22;
+
+  let sfdPath = '';
+  let sfdPoly = `M ${X(0)} ${zeroY_V}`;
+  const N = Math.max(300, BeamState.numElements * 100);
+  for (let i = 0; i <= N; i++) {
+    const x = (i / N) * totalL;
+    const v = BeamState.getV(x);
+    const px = X(x);
+    const py = yV(v);
+    if (i === 0) sfdPath += `M ${px} ${py}`;
+    else sfdPath += ` L ${px} ${py}`;
+    sfdPoly += ` L ${px} ${py}`;
+  }
+  sfdPoly += ` L ${X(totalL)} ${zeroY_V} Z`;
+
+  let bmdPath = '';
+  let bmdPoly = `M ${X(0)} ${zeroY_M}`;
+  for (let i = 0; i <= N; i++) {
+    const x = (i / N) * totalL;
+    const m = BeamState.getM(x);
+    const px = X(x);
+    const py = yM(m);
+    if (i === 0) bmdPath += `M ${px} ${py}`;
+    else bmdPath += ` L ${px} ${py}`;
+    bmdPoly += ` L ${px} ${py}`;
+  }
+  bmdPoly += ` L ${X(totalL)} ${zeroY_M} Z`;
+
+  let defPath = '';
+  for (let i = 0; i <= N; i++) {
+    const x = (i / N) * totalL;
+    const d = BeamState.getDef(x);
+    const px = X(x);
+    const py = yD(d);
+    if (i === 0) defPath += `M ${px} ${py}`;
+    else defPath += ` L ${px} ${py}`;
+  }
+
+  let steppedBeamSvg = '';
+  const maxEI = Math.max(...BeamState.elements.map(e => e.EI_raw));
+  for (let i = 0; i < BeamState.numElements; i++) {
+    const el = BeamState.elements[i];
+    const x1 = X(el.x1);
+    const x2 = X(el.x2);
+    const thick = 2.5 + (el.EI_raw / maxEI) * 4.5;
+    steppedBeamSvg += `
+      <line x1="${x1}" y1="${beamY}" x2="${x2}" y2="${beamY}" stroke="#211E17" stroke-width="${thick}" stroke-linecap="butt"/>
+      <line x1="${x2}" y1="${beamY - 6}" x2="${x2}" y2="${beamY + 6}" stroke="#A0700C" stroke-width="1.2" stroke-dasharray="2 2"/>
+    `;
+  }
+
+  let nodesAndSupportsSvg = '';
+  const makeSupport = (x, type, label, settMM) => {
+    let settText = (settMM && Math.abs(settMM) > 1e-4) ? `<text x="${x}" y="${beamY + 34}" fill="#A0700C" font-weight="700" font-size="8" text-anchor="middle">Δy=${settMM}mm</text>` : '';
+    if (type === 'fixed') {
+      let hatch = '';
+      const side = (x < 120) ? -1 : 1;
+      for (let h = -12; h <= 12; h += 5) {
+        hatch += `<line x1="${x - side * 6}" y1="${beamY + h - 4}" x2="${x}" y2="${beamY + h}" stroke="#211E17" stroke-width="1"/>`;
+      }
+      return `<line x1="${x}" y1="${beamY - 14}" x2="${x}" y2="${beamY + 14}" stroke="#211E17" stroke-width="2.5"/>${hatch}<text x="${x}" y="${beamY + 24}" fill="#C13A12" font-weight="700" font-size="9.5" text-anchor="middle">${label}</text>${settText}`;
+    } else if (type === 'free') {
+      return `<text x="${x}" y="${beamY + 22}" fill="#7A7361" font-weight="600" font-size="8.5" text-anchor="middle">${label} (Free)</text>`;
+    } else if (type === 'pin') {
+      return `
+        <polygon points="${x},${beamY} ${x - 6},${beamY + 11} ${x + 6},${beamY + 11}" fill="none" stroke="#211E17" stroke-width="1.2"/>
+        <line x1="${x - 8}" y1="${beamY + 11}" x2="${x + 8}" y2="${beamY + 11}" stroke="#211E17" stroke-width="1.2"/>
+        <text x="${x}" y="${beamY + 23}" fill="#C13A12" font-weight="700" font-size="9.5" text-anchor="middle">${label}</text>${settText}
+      `;
+    } else {
+      return `
+        <polygon points="${x},${beamY} ${x - 6},${beamY + 10} ${x + 6},${beamY + 10}" fill="none" stroke="#211E17" stroke-width="1.2"/>
+        <circle cx="${x - 3}" cy="${beamY + 13}" r="1.5" fill="#F4F1E8" stroke="#211E17" stroke-width="0.8"/>
+        <circle cx="${x + 3}" cy="${beamY + 13}" r="1.5" fill="#F4F1E8" stroke="#211E17" stroke-width="0.8"/>
+        <line x1="${x - 7}" y1="${beamY + 16}" x2="${x + 7}" y2="${beamY + 16}" stroke="#211E17" stroke-width="1"/>
+        <text x="${x}" y="${beamY + 26}" fill="#C13A12" font-weight="700" font-size="9.5" text-anchor="middle">${label}</text>
+        ${settText}
+      `;
+    }
+  };
+
+  nodesAndSupportsSvg += makeSupport(X(0), BeamState.suppLeft, BeamState.globalNodes[0].label, supportSettlements[0]);
+
+  for (let i = 1; i < BeamState.numNodes - 1; i++) {
+    const gn = BeamState.globalNodes[i];
+    if (gn.isSupport) {
+      nodesAndSupportsSvg += makeSupport(X(gn.x), 'roller', gn.label, supportSettlements[gn.supportIdx]);
+    } else {
+      nodesAndSupportsSvg += `
+        <circle cx="${X(gn.x)}" cy="${beamY}" r="3" fill="#A0700C" stroke="#211E17" stroke-width="1"/>
+        <text x="${X(gn.x)}" y="${beamY + 14}" fill="#A0700C" font-weight="700" font-size="8.5" text-anchor="middle">${gn.label}</text>
+      `;
+    }
+  }
+
+  const lastN = BeamState.globalNodes[BeamState.numNodes - 1];
+  nodesAndSupportsSvg += makeSupport(X(totalL), BeamState.suppRight, lastN.label, supportSettlements[lastN.supportIdx]);
+
+  let loadsSvg = '';
+  let dimsSvg = '';
+  for (let i = 0; i < BeamState.numElements; i++) {
+    const el = BeamState.elements[i];
+    const x1 = X(el.x1);
+    const x2 = X(el.x2);
+
+    if (el.T_top !== 0 || el.T_bot !== 0) {
+      loadsSvg += `
+        <text x="${(x1 + x2) / 2}" y="${beamY + 11}" fill="#6b21a8" font-size="8.5" font-weight="700" text-anchor="middle">🌡️ Top:${el.T_top}° | Bot:${el.T_bot}°</text>
+      `;
+    }
+
+    el.pointLoads.forEach(pl => {
+      const xP = X(el.x1 + pl.a);
+      if (Math.abs(pl.P) > 1e-6) {
+        loadsSvg += `
+          <line x1="${xP}" y1="${beamY - 26}" x2="${xP}" y2="${beamY}" stroke="#0D6A63" stroke-width="1.8"/>
+          <polygon points="${xP},${beamY} ${xP - 3},${beamY - 6} ${xP + 3},${beamY - 6}" fill="#0D6A63"/>
+          <text x="${xP}" y="${beamY - 29}" fill="#0D6A63" font-size="9" font-weight="600" text-anchor="middle">Py=${pl.P.toFixed(1)}kN</text>
+        `;
+      }
+      if (Math.abs(pl.Px || 0) > 1e-6) {
+        const isRight = pl.Px >= 0;
+        const startX = isRight ? xP - 22 : xP + 22;
+        loadsSvg += `
+          <line x1="${startX}" y1="${beamY}" x2="${xP}" y2="${beamY}" stroke="#1D5288" stroke-width="2"/>
+          <polygon points="${xP},${beamY} ${isRight ? xP - 5 : xP + 5},${beamY - 3} ${isRight ? xP - 5 : xP + 5},${beamY + 3}" fill="#1D5288"/>
+          <text x="${startX}" y="${beamY - 5}" fill="#1D5288" font-size="8.5" font-weight="700" text-anchor="middle">Px=${pl.Px.toFixed(1)}kN</text>
+        `;
+      }
+    });
+
+    el.uvlLoads.forEach(uvl => {
+      const xA = X(el.x1 + uvl.a);
+      const xB = X(el.x1 + uvl.b);
+      const maxH = 20;
+      const maxW = Math.max(Math.abs(uvl.w1), Math.abs(uvl.w2), 1);
+      const h1 = (uvl.w1 / maxW) * maxH;
+      const h2 = (uvl.w2 / maxW) * maxH;
+
+      loadsSvg += `
+        <polygon points="${xA},${beamY} ${xA},${beamY - h1} ${xB},${beamY - h2} ${xB},${beamY}" fill="rgba(193,58,18,0.15)" stroke="#C13A12" stroke-width="1.2"/>
+      `;
+      const numLines = Math.max(2, Math.round((xB - xA) / 10));
+      for (let s = 0; s <= numLines; s++) {
+        const frac = s / numLines;
+        const lx = xA + frac * (xB - xA);
+        const ly = beamY - (h1 + frac * (h2 - h1));
+        loadsSvg += `
+          <line x1="${lx}" y1="${ly}" x2="${lx}" y2="${beamY}" stroke="#C13A12" stroke-width="0.8"/>
+          <polygon points="${lx},${beamY} ${lx - 1.5},${beamY - 3} ${lx + 1.5},${beamY - 3}" fill="#C13A12"/>
+        `;
+      }
+      loadsSvg += `
+        <text x="${xA}" y="${beamY - h1 - 3}" fill="#C13A12" font-size="8" font-weight="700" text-anchor="middle">${uvl.w1}</text>
+        <text x="${xB}" y="${beamY - h2 - 3}" fill="#C13A12" font-size="8" font-weight="700" text-anchor="middle">${uvl.w2}k/m</text>
+      `;
+    });
+
+    el.momentLoads.forEach(ml => {
+      const xM = X(el.x1 + ml.a);
+      const isCCW = ml.M >= 0;
+      const arc = isCCW
+        ? `M ${xM + 10} ${beamY + 3} A 11 11 0 1 0 ${xM} ${beamY - 11}`
+        : `M ${xM - 10} ${beamY + 3} A 11 11 0 1 1 ${xM} ${beamY - 11}`;
+      const arrow = isCCW
+        ? `<polygon points="${xM},${beamY - 11} ${xM - 4},${beamY - 8} ${xM - 1.5},${beamY - 14}" fill="#1D5288"/>`
+        : `<polygon points="${xM},${beamY - 11} ${xM + 4},${beamY - 8} ${xM + 1.5},${beamY - 14}" fill="#1D5288"/>`;
+      loadsSvg += `
+        <path d="${arc}" fill="none" stroke="#1D5288" stroke-width="1.8"/>
+        ${arrow}
+        <text x="${xM + (isCCW ? 12 : -12)}" y="${beamY - 16}" fill="#1D5288" font-size="8.5" font-weight="700" text-anchor="${isCCW ? 'start' : 'end'}">M=${ml.M}kNm</text>
+      `;
+    });
+
+    dimsSvg += `
+      <line x1="${x1}" y1="${P1.pb - 2}" x2="${x2}" y2="${P1.pb - 2}" stroke="#7A7361" stroke-width="0.8"/>
+      <text x="${(x1 + x2) / 2}" y="${P1.pb - 5}" fill="#7A7361" font-size="8.5" text-anchor="middle">${el.L.toFixed(1)}m | EI:${el.EI_raw}M</text>
+    `;
+  }
+
+  let defNodesSvg = '';
+  for (let i = 0; i < BeamState.numNodes; i++) {
+    const xN = X(BeamState.globalNodes[i].x);
+    const defAtNode = yD(BeamState.D_global[3 * i + 1] * 1000);
+    defNodesSvg += `<circle cx="${xN}" cy="${defAtNode}" r="3" fill="#C13A12" stroke="#211E17" stroke-width="0.8"/>`;
+  }
+
+  let reaxSvg = '';
+  let reaxSummaryCardsHtml = '';
+  
+  for (let i = 0; i < BeamState.numNodes; i++) {
+    const gn = BeamState.globalNodes[i];
+    const xN = X(gn.x);
+    const dofU = 3 * i;
+    const dofV = 3 * i + 1;
+    const dofM = 3 * i + 2;
+    const hasU = BeamState.isConstrained[dofU];
+    const hasV = BeamState.isConstrained[dofV];
+    const hasM = BeamState.isConstrained[dofM];
+
+    if (!hasU && !hasV && !hasM) continue;
+
+    const isLeftEnd = (i === 0);
+    const isRightEnd = (i === BeamState.numNodes - 1);
+
+    reaxSvg += `
+      <line x1="${xN}" y1="${P5.pt + 4}" x2="${xN}" y2="${P5.pb - 8}" stroke="#D8D1BE" stroke-width="1" stroke-dasharray="2 2"/>
+      <circle cx="${xN}" cy="${zeroY_R}" r="4.5" fill="#211E17"/>
+      <text x="${xN}" y="${zeroY_R - 38}" font-size="10" font-weight="800" fill="#211E17" text-anchor="middle">NODE ${gn.label}</text>
+    `;
+
+    let cardItems = '';
+
+    if (hasU) {
+      const Rx = BeamState.reactionsByDOF[dofU] || 0;
+      const isRight = Rx >= 0;
+      const arrowLength = 30;
+      const xStart = isRight ? xN - arrowLength : xN + arrowLength;
+      
+      let textX = xN;
+      let textAnchor = "middle";
+      if (isLeftEnd) {
+        textX = xN + 6;
+        textAnchor = "start";
+      } else if (isRightEnd) {
+        textX = xN - 6;
+        textAnchor = "end";
+      }
+
+      reaxSvg += `
+        <g>
+          <line x1="${xStart}" y1="${zeroY_R}" x2="${xN}" y2="${zeroY_R}" stroke="#0D6A63" stroke-width="2" stroke-linecap="round"/>
+          <polygon points="${xN},${zeroY_R} ${isRight ? xN - 5 : xN + 5},${zeroY_R - 2.5} ${isRight ? xN - 5 : xN + 5},${zeroY_R + 2.5}" fill="#0D6A63"/>
+          <text x="${textX}" y="${zeroY_R - 6}" font-size="9" font-weight="700" fill="#0D6A63" text-anchor="${textAnchor}">
+            R_x = ${fmt(Math.abs(Rx))} kN (${isRight ? '→' : '←'})
+          </text>
+        </g>
+      `;
+      cardItems += `
+        <div class="reax-card-item">
+          <span style="color:var(--teal); font-weight:600;">Horizontal (R_x):</span>
+          <b>${fmt(Rx)} kN (${isRight ? '→' : '←'})</b>
+        </div>
+      `;
+    }
+
+    if (hasV) {
+      const Ry = BeamState.reactionsByDOF[dofV] || 0;
+      const isUp = Ry >= 0;
+      const arrowHeight = 28;
+      const yStart = isUp ? zeroY_R + arrowHeight : zeroY_R - arrowHeight;
+      const col = isUp ? '#1D5288' : '#C13A12';
+
+      reaxSvg += `
+        <g>
+          <line x1="${xN}" y1="${yStart}" x2="${xN}" y2="${zeroY_R}" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/>
+          <polygon points="${xN},${zeroY_R} ${xN - 3},${isUp ? zeroY_R + 5 : zeroY_R - 5} ${xN + 3},${isUp ? zeroY_R + 5 : zeroY_R - 5}" fill="${col}"/>
+          <text x="${xN}" y="${isUp ? yStart + 12 : yStart - 6}" font-size="9.5" font-weight="700" fill="${col}" text-anchor="middle">
+            R_y = ${fmt(Math.abs(Ry))} kN (${isUp ? '↑' : '↓'})
+          </text>
+        </g>
+      `;
+      cardItems += `
+        <div class="reax-card-item">
+          <span style="color:${col}; font-weight:600;">Vertical (R_y):</span>
+          <b>${fmt(Ry)} kN (${isUp ? '↑' : '↓'})</b>
+        </div>
+      `;
+    }
+
+    if (hasM) {
+      const Mz = BeamState.reactionsByDOF[dofM] || 0;
+      const isCCW = Mz >= 0;
+      const rArc = 14;
+      
+      const arcPath = isCCW
+        ? `M ${xN + rArc} ${zeroY_R + 3} A ${rArc} ${rArc} 0 1 0 ${xN} ${zeroY_R - rArc}`
+        : `M ${xN - rArc} ${zeroY_R + 3} A ${rArc} ${rArc} 0 1 1 ${xN} ${zeroY_R - rArc}`;
+      
+      const arrowHead = isCCW
+        ? `<polygon points="${xN},${zeroY_R - rArc} ${xN - 4},${zeroY_R - rArc + 2.5} ${xN - 2},${zeroY_R - rArc - 3.5}" fill="#C13A12"/>`
+        : `<polygon points="${xN},${zeroY_R - rArc} ${xN + 4},${zeroY_R - rArc + 2.5} ${xN + 2},${zeroY_R - rArc - 3.5}" fill="#C13A12"/>`;
+
+      let mTextX = isLeftEnd ? xN + 20 : (isRightEnd ? xN - 20 : (isCCW ? xN + 20 : xN - 20));
+      let mAnchor = isLeftEnd ? "start" : (isRightEnd ? "end" : (isCCW ? "start" : "end"));
+
+      reaxSvg += `
+        <g>
+          <path d="${arcPath}" fill="none" stroke="#C13A12" stroke-width="1.8"/>
+          ${arrowHead}
+          <text x="${mTextX}" y="${zeroY_R - 22}" font-size="9" font-weight="700" fill="#C13A12" text-anchor="${mAnchor}">
+            M = ${fmt(Math.abs(Mz))} kN·m (${isCCW ? '↺ CCW' : '↻ CW'})
+          </text>
+        </g>
+      `;
+      cardItems += `
+        <div class="reax-card-item">
+          <span style="color:var(--verm); font-weight:600;">Moment (M):</span>
+          <b>${fmt(Mz)} kN·m (${isCCW ? '↺ CCW' : '↻ CW'})</b>
+        </div>
+      `;
+    }
+
+    reaxSummaryCardsHtml += `
+      <div class="reax-card">
+        <div class="reax-card-title">
+          <span>NODE ${gn.label}</span>
+          <span style="color:var(--mut); font-size:9px;">x = ${gn.x.toFixed(2)} m</span>
+        </div>
+        ${cardItems}
+      </div>
+    `;
+  }
+
+  document.getElementById('diagReaxSummaryContainer').innerHTML = reaxSummaryCardsHtml;
+
+  host.innerHTML = `
+  <svg id="diagSvg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+    <defs>
+      <linearGradient id="sfdGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0D6A63" stop-opacity="0.25"/>
+        <stop offset="50%" stop-color="#F4F1E8" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#C13A12" stop-opacity="0.25"/>
+      </linearGradient>
+      <linearGradient id="bmdGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0D6A63" stop-opacity="0.28"/>
+        <stop offset="50%" stop-color="#F4F1E8" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#C13A12" stop-opacity="0.28"/>
+      </linearGradient>
+    </defs>
+
+    ${[P1, P2, P3, P4, P5].map(p => `<line x1="10" y1="${p.top}" x2="${W - 10}" y2="${p.top}" stroke="#E6E0CF" stroke-width="1"/>`).join('')}
+
+    <text x="${padL}" y="${P1.tt}" font-size="10" font-weight="700" fill="#57513F">1. MODEL & LOADING CONFIGURATION</text>
+    <text x="${padL}" y="${P2.tt}" font-size="10" font-weight="700" fill="#57513F">2. SHEAR FORCE DIAGRAM • V(x) [kN]</text>
+    <text x="${padL}" y="${P3.tt}" font-size="10" font-weight="700" fill="#57513F">3. BENDING MOMENT DIAGRAM • M(x) [kN·m]</text>
+    <text x="${padL}" y="${P4.tt}" font-size="10" font-weight="700" fill="#57513F">4. ELASTIC DEFLECTION CURVE • v(x) [mm]</text>
+    <text x="${padL}" y="${P5.tt}" font-size="10" font-weight="700" fill="#57513F">5. SUPPORT REACTIONS SUMMARY FREE-BODY DIAGRAM (R_x, R_y & M_z)</text>
+
+    ${steppedBeamSvg}
+    ${loadsSvg}
+    ${nodesAndSupportsSvg}
+    ${dimsSvg}
+
+    <path d="${sfdPoly}" fill="url(#sfdGrad)"/>
+    <line x1="${padL}" y1="${zeroY_V}" x2="${padL + plotW}" y2="${zeroY_V}" stroke="#7A7361" stroke-dasharray="2 2"/>
+    <path d="${sfdPath}" fill="none" stroke="#211E17" stroke-width="1.8"/>
+    <text x="${padL - 6}" y="${zeroY_V + 3}" fill="#7A7361" font-size="8.5" text-anchor="end">0</text>
+
+    <path d="${bmdPoly}" fill="url(#bmdGrad)"/>
+    <line x1="${padL}" y1="${zeroY_M}" x2="${padL + plotW}" y2="${zeroY_M}" stroke="#7A7361" stroke-dasharray="2 2"/>
+    <path d="${bmdPath}" fill="none" stroke="#211E17" stroke-width="1.8"/>
+    <text x="${padL - 6}" y="${zeroY_M + 3}" fill="#7A7361" font-size="8.5" text-anchor="end">0</text>
+
+    <line x1="${padL}" y1="${zeroY_D}" x2="${padL + plotW}" y2="${zeroY_D}" stroke="#7A7361" stroke-dasharray="3 3"/>
+    <path d="${defPath}" fill="none" stroke="#A0700C" stroke-width="2"/>
+    ${defNodesSvg}
+    <text x="${padL - 6}" y="${zeroY_D + 3}" fill="#7A7361" font-size="8.5" text-anchor="end">0</text>
+
+    <line x1="${padL}" y1="${zeroY_R}" x2="${padL + plotW}" y2="${zeroY_R}" stroke="#211E17" stroke-width="1.8"/>
+    ${reaxSvg}
+
+    <g id="cursorGroup" style="display: none;">
+      <line id="scanLine" x1="0" y1="${P1.top + 3}" x2="0" y2="${P5.pb + 5}" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="3 2"/>
+      <circle id="dotModel" r="3.5" fill="#38bdf8" stroke="#0f172a" stroke-width="1.2"/>
+      <circle id="dotSFD" r="4" fill="#34d399" stroke="#0f172a" stroke-width="1.5"/>
+      <circle id="dotBMD" r="4" fill="#f87171" stroke="#0f172a" stroke-width="1.5"/>
+      <circle id="dotDef" r="4" fill="#fbbf24" stroke="#0f172a" stroke-width="1.5"/>
+    </g>
+  </svg>`;
+
+  DiagContext = {
+    W, H, padL, padR, plotW, totalL,
+    X, yV, yM, yD, beamY,
+    P1, P2, P3, P4, P5
+  };
+
+  bindInteractiveTracking();
+}
+
+function bindInteractiveTracking() {
+  const svg = document.getElementById('diagSvg');
+  const hud = document.getElementById('hudBox');
+  const curG = document.getElementById('cursorGroup');
+  const scanLine = document.getElementById('scanLine');
+  const dotModel = document.getElementById('dotModel');
+  const dotSFD = document.getElementById('dotSFD');
+  const dotBMD = document.getElementById('dotBMD');
+  const dotDef = document.getElementById('dotDef');
+
+  if (!svg || !DiagContext || !hud) return;
+
+  const onPointerMove = (e) => {
+    const rect = svg.getBoundingClientRect();
+    const scaleX = DiagContext.W / rect.width;
+    const mouseSvgX = (e.clientX - rect.left) * scaleX;
+    const mouseSvgY = (e.clientY - rect.top) * (DiagContext.H / rect.height);
+
+    const clampedX = Math.max(DiagContext.padL, Math.min(DiagContext.padL + DiagContext.plotW, mouseSvgX));
+    const currentBeamX = ((clampedX - DiagContext.padL) / DiagContext.plotW) * DiagContext.totalL;
+
+    const curV = BeamState.getV(currentBeamX);
+    const curM = BeamState.getM(currentBeamX);
+    const curD = BeamState.getDef(currentBeamX);
+    const curEI = BeamState.getEI(currentBeamX);
+
+    const curY_V = DiagContext.yV(curV);
+    const curY_M = DiagContext.yM(curM);
+    const curY_D = DiagContext.yD(curD);
+    const curY_Model = DiagContext.beamY;
+
+    curG.style.display = '';
+    scanLine.setAttribute('x1', clampedX);
+    scanLine.setAttribute('x2', clampedX);
+
+    dotModel.setAttribute('cx', clampedX);
+    dotModel.setAttribute('cy', curY_Model);
+
+    dotSFD.setAttribute('cx', clampedX);
+    dotSFD.setAttribute('cy', curY_V);
+
+    dotBMD.setAttribute('cx', clampedX);
+    dotBMD.setAttribute('cy', curY_M);
+
+    dotDef.setAttribute('cx', clampedX);
+    dotDef.setAttribute('cy', curY_D);
+
+    document.getElementById('hud-pos').innerText = `Position x = ${currentBeamX.toFixed(2)} m`;
+    document.getElementById('hud-v').innerText = `${curV >= 0 ? '+' : ''}${curV.toFixed(2)} kN`;
+    document.getElementById('hud-m').innerText = `${curM >= 0 ? '+' : ''}${curM.toFixed(2)} kN·m`;
+    document.getElementById('hud-d').innerText = `${curD >= 0 ? '+' : ''}${curD.toFixed(3)} mm`;
+    document.getElementById('hud-ei').innerText = `${curEI.toFixed(1)} MN·m²`;
+
+    const hudW = 180;
+    let hudLeft = (clampedX / DiagContext.W) * rect.width + 12;
+    if (hudLeft + hudW > rect.width) {
+      hudLeft = (clampedX / DiagContext.W) * rect.width - hudW - 12;
+    }
+    const hudTop = (mouseSvgY / DiagContext.H) * rect.height;
+
+    hud.style.display = 'block';
+    hud.style.left = `${hudLeft}px`;
+    hud.style.top = `${hudTop}px`;
+  };
+
+  const onPointerLeave = () => {
+    curG.style.display = 'none';
+    hud.style.display = 'none';
+  };
+
+  svg.addEventListener('pointermove', onPointerMove);
+  svg.addEventListener('pointerdown', onPointerMove);
+  svg.addEventListener('pointerleave', onPointerLeave);
+}
+
+function renderMatrixSteps(data) {
+  const c = document.getElementById('steps-container');
+  let html = '';
+
+  const unconBadges = data.unconstrainedDOFs.map(i => {
+    return `<div class="dof-badge uncon"><span class="dof-tag">DOF ${i + 1}</span> <b>$${data.dofNames[i]}$</b></div>`;
+  }).join('');
+
+  const conBadges = data.constrainedDOFs.map(i => {
+    const sett = data.prescribedDisplacements[i] * 1000;
+    const settStr = Math.abs(sett) > 1e-4 ? ` = ${sett.toFixed(2)} mm` : ` = 0`;
+    return `<div class="dof-badge con"><span class="dof-tag">DOF ${i + 1}</span> <b>$${data.dofNames[i]}$</b> <span style="font-size:9.5px; color:var(--mut);">(${settStr})</span></div>`;
+  }).join('');
+
+  const unconMathVector = data.unconstrainedDOFs.map(i => data.dofNames[i]).join(' & ');
+  const conMathVector = data.constrainedDOFs.map(i => data.dofNames[i]).join(' & ');
+
+  html += `
+  <div class="step-item">
+    <div class="step-num">STEP 1</div>
+    <div>
+      <h3>1. Discretization, Kinematic Indeterminacy ($D_k$) & DOF Partitioning</h3>
+      <p>The structure contains <b>${data.numNodes} nodes</b> and <b>${data.numElements} elements</b>. Each plane node has 3 DOFs: Axial displacement ($u$), Transverse displacement ($v$), and Flexural slope/rotation ($\\theta$).</p>
+      
+      <div class="math-box">
+        <span class="formula-tag">Total Displacement Vector {D}</span><br>
+        $$\\{D\\} = \\begin{bmatrix} u_1 & v_1 & \\theta_1 & u_2 & v_2 & \\theta_2 & \\dots & u_n & v_n & \\theta_n \\end{bmatrix}^T \\in \\mathbb{R}^{${data.totalDOFs}}$$
+        
+        <div style="margin-top:6px;">
+          <span class="formula-tag">Active / Unconstrained DOFs $\{D_U\}$ (Kinematic Indeterminacy $D_k = ${data.Dk})</span>
+          <div class="dof-badge-grid">${unconBadges}</div>
+          $$\\{D_U\\} = \\begin{bmatrix} ${unconMathVector || '\\emptyset'} \\end{bmatrix}^T$$
+        </div>
+
+        <div style="margin-top:6px;">
+          <span class="formula-tag">Constrained / Prescribed DOFs $\{D_K\}$ (${data.constrainedDOFs.length} Restraints)</span>
+          <div class="dof-badge-grid">${conBadges}</div>
+          $$\\{D_K\\} = \\begin{bmatrix} ${conMathVector || '\\emptyset'} \\end{bmatrix}^T$$
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  let elemCardsHtml = '';
+  for (let i = 0; i < data.numElements; i++) {
+    const n1 = data.globalNodes[i].label;
+    const n2 = data.globalNodes[i + 1].label;
+    const el = data.elements[i];
+    const k_latex = formatTeXMatrix(data.elemMatrices[i], 1);
+
+    elemCardsHtml += `
+      <div style="margin-top:8px; padding: 6px 8px; background: rgba(33,30,23,0.02); border: 1px dashed var(--line);">
+        <b>Element ${i + 1} (${n1} → ${n2}):</b> $L = ${el.L.toFixed(2)}\\text{ m},\\ EI = ${el.EI_raw}\\text{ MN}\\cdot\\text{m}^2,\\ EA = ${(el.EA/1000).toFixed(1)}\\text{ MN}$<br>
+        $$\\frac{EA}{L} = ${fmt(data.elemCoeffs[i].k_ax, 1)},\\quad \\frac{12EI}{L^3} = ${fmt(data.elemCoeffs[i].k11, 1)},\\quad \\frac{6EI}{L^2} = ${fmt(data.elemCoeffs[i].k12, 1)},\\quad \\frac{4EI}{L} = ${fmt(data.elemCoeffs[i].k22, 1)},\\quad \\frac{2EI}{L} = ${fmt(data.elemCoeffs[i].k24, 1)}$$
+        $$[k]^{(${i+1})} = ${k_latex}$$
+      </div>
+    `;
+  }
+
+  html += `
+  <div class="step-item">
+    <div class="step-num">STEP 2</div>
+    <div>
+      <h3>2. Element Stiffness Matrix Derivation ($[k]^{(e)}$)</h3>
+      <p>Using Euler-Bernoulli cubic Hermite shape functions $N_i(x)$ and axial bar strain-energy integration:</p>
+      
+      <div class="math-box">
+        <span class="formula-tag">Hermitian Shape Functions & Elastic Formulation</span><br>
+        $$N_1(x) = 1 - 3\\left(\\frac{x}{L}\\right)^2 + 2\\left(\\frac{x}{L}\\right)^3,\\quad N_2(x) = x\\left(1 - \\frac{x}{L}\\right)^2$$
+        $$N_3(x) = 3\\left(\\frac{x}{L}\\right)^2 - 2\\left(\\frac{x}{L}\\right)^3,\\quad N_4(x) = \\frac{x^2}{L}\\left(\\frac{x}{L} - 1\\right)$$
+        $$[k_b] = \\int_0^L [B]^T EI [B] \\, dx = \\begin{bmatrix} 
+        \\frac{12EI}{L^3} & \\frac{6EI}{L^2} & -\\frac{12EI}{L^3} & \\frac{6EI}{L^2} \\\\[5pt]
+        \\frac{6EI}{L^2} & \\frac{4EI}{L} & -\\frac{6EI}{L^2} & \\frac{2EI}{L} \\\\[5pt]
+        -\\frac{12EI}{L^3} & -\\frac{6EI}{L^2} & \\frac{12EI}{L^3} & -\\frac{6EI}{L^2} \\\\[5pt]
+        \\frac{6EI}{L^2} & \\frac{2EI}{L} & -\\frac{6EI}{L^2} & \\frac{4EI}{L}
+        \\end{bmatrix}$$
+        ${elemCardsHtml}
+      </div>
+    </div>
+  </div>`;
+
+  let femStepsHtml = '';
+  for (let i = 0; i < data.numElements; i++) {
+    const el = data.elements[i];
+    const n1 = data.globalNodes[i].label;
+    const n2 = data.globalNodes[i + 1].label;
+    const loadsDesc = [];
+    el.pointLoads.forEach(p => {
+      if (Math.abs(p.P) > 1e-6) loadsDesc.push(`Point $P_y=${p.P.toFixed(1)}\\text{ kN}$ at $a=${p.a.toFixed(2)}\\text{ m}$`);
+      if (Math.abs(p.Px || 0) > 1e-6) loadsDesc.push(`Axial $P_x=${p.Px.toFixed(1)}\\text{ kN}$ at $a=${p.a.toFixed(2)}\\text{ m}$`);
+    });
+    el.uvlLoads.forEach(u => loadsDesc.push(`UVL [$w_1=${u.w1} \\to w_2=${u.w2}\\text{ kN/m}$] over $[${u.a.toFixed(1)}, ${u.b.toFixed(1)}]\\text{ m}$`));
+    el.momentLoads.forEach(m => loadsDesc.push(`Moment $M_0=${m.M}\\text{ kN}\\cdot\\text{m}$ at $a=${m.a.toFixed(2)}\\text{ m}$`));
+    
+    const deltaT = el.T_bot - el.T_top;
+    let tempDerivStr = '';
+    if (deltaT !== 0) {
+      const phi_0 = (el.alpha * deltaT) / el.depth;
+      const M_T = el.EI * phi_0;
+      loadsDesc.push(`$\\Delta T=${deltaT}^\\circ\\text{C}$ (Thermal Gradient)`);
+      tempDerivStr = `<br>&nbsp;&nbsp;↳ <i>Thermal Clamping:</i> Curvature $\\phi_0 = \\frac{\\alpha \\Delta T}{h} = \\frac{(${el.alpha_raw}\\times 10^{-6})(${deltaT})}{${el.depth}} = ${sci(phi_0)}\\text{ m}^{-1} \\implies M_T = EI\\phi_0 = <span class="hl-p">${fmt(M_T)} \\text{ kN}\\cdot\\text{m}</span>$`;
+    }
+
+    const descStr = loadsDesc.length > 0 ? loadsDesc.join('; ') : 'No transverse loads applied';
+
+    femStepsHtml += `
+      <div style="margin-bottom:8px; padding: 6px 8px; background: rgba(33,30,23,0.02); border: 1px dashed var(--line);">
+        <b>Element ${i+1} (${n1} → ${n2}):</b> ${descStr} ${tempDerivStr}<br>
+        $$\\{f_{fem}\\}^{(${i+1})} = \\begin{bmatrix} N_{${n1}} \\\\[1.5pt] V_{${n1}} \\\\[1.5pt] M_{${n1}} \\\\[1.5pt] N_{${n2}} \\\\[1.5pt] V_{${n2}} \\\\[1.5pt] M_{${n2}} \\end{bmatrix} = \\begin{bmatrix} ${fmt(data.f_fem_list[i][0])}\\text{ kN} \\\\[1.5pt] ${fmt(data.f_fem_list[i][1])}\\text{ kN} \\\\[1.5pt] ${fmt(data.f_fem_list[i][2])}\\text{ kN}\\cdot\\text{m} \\\\[1.5pt] ${fmt(data.f_fem_list[i][3])}\\text{ kN} \\\\[1.5pt] ${fmt(data.f_fem_list[i][4])}\\text{ kN} \\\\[1.5pt] ${fmt(data.f_fem_list[i][5])}\\text{ kN}\\cdot\\text{m} \\end{bmatrix}$$
+      </div>
+    `;
+  }
+
+  html += `
+  <div class="step-item">
+    <div class="step-num">STEP 3</div>
+    <div>
+      <h3>3. Equivalent Nodal Actions & Fixed-End Force Vector Calculation</h3>
+      <p>Fixed-end forces are derived by integrating shape functions against load profiles and thermal curvatures:</p>
+      
+      <div class="math-box temp">
+        <span class="formula-tag">Fixed-End Analytical Equations</span><br>
+        • <b>Point Load:</b> $M_1^F = +\\frac{Pab^2}{L^2},\\quad M_2^F = -\\frac{Pa^2b}{L^2},\\quad V_1^F = \\frac{Pb}{L} + \\frac{M_1^F + M_2^F}{L}$<br>
+        • <b>Distributed Load / UVL:</b> $M_1^F = \\int_a^b w(x)\\frac{x(L-x)^2}{L^2}dx,\\quad M_2^F = -\\int_a^b w(x)\\frac{x^2(L-x)}{L^2}dx$<br>
+        • <b>Temperature Gradient $\\Delta T$:</b> $M_1^F = -\\frac{EI \\cdot \\alpha(T_{bot}-T_{top})}{h},\\quad M_2^F = +\\frac{EI \\cdot \\alpha(T_{bot}-T_{top})}{h}$<br><br>
+        ${femStepsHtml}
+        <span class="formula-tag">Global Fixed-End Vector {P_F} & Equivalent Joint Load {P}</span><br>
+        $$\\{P_F\\} = \\begin{bmatrix} ${data.PF.map(p => fmt(p)).join(' & ')} \\end{bmatrix}^T$$
+        $$\\{P\\} = -\\{P_F\\} = \\begin{bmatrix} ${data.P_eq.map(p => fmt(p)).join(' & ')} \\end{bmatrix}^T$$
+      </div>
+    </div>
+  </div>`;
+
+  let tableHeaders = data.dofNames.map((name, i) => `<th>${name.replace('\\theta', 'θ')} (${i+1})</th>`).join('');
+  let tableRows = '';
+  for (let i = 0; i < data.totalDOFs; i++) {
+    tableRows += `<tr><th>${data.dofNames[i].replace('\\theta', 'θ')} (${i+1})</th>`;
+    for (let j = 0; j < data.totalDOFs; j++) {
+      const isU = data.unconstrainedDOFs.includes(i) && data.unconstrainedDOFs.includes(j);
+      tableRows += `<td class="${isU ? 'uncon' : 'con'}">${fmt(data.K_global[i][j], 1)}</td>`;
+    }
+    tableRows += `</tr>`;
+  }
+
+  // STEP 4 - Full Master Global Stiffness Matrix
+  html += `
+  <div class="step-item step-global-matrix-page">
+    <div class="step-num">STEP 4</div>
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>4. Global Matrix Assembly $[K]$ & Support Settlement Coupling</h3>
+        <button class="btn-matrix-modal" onclick="openMatrixModal()" style="font-family:var(--mono); font-size:10px; font-weight:700; background:var(--paper); border:1px solid var(--ink); padding:2px 6px; cursor:pointer;">🔍 Fullscreen Matrix</button>
+      </div>
+      <p>Element stiffness matrices are assembled into the master matrix $[K] = \\sum [k]^{(e)}$. The system is partitioned into active $(U)$ and constrained $(K)$ subsets:</p>
+      
+      <div class="math-box settle">
+        <span class="formula-tag">Partitioned Master Equilibrium</span><br>
+        $$\\begin{bmatrix} [K_{UU}] & [K_{UK}] \\\\[3pt] [K_{KU}] & [K_{KK}] \\end{bmatrix} \\begin{Bmatrix} \\{D_U\\} \\\\[3pt] \\{D_K\\} \\end{Bmatrix} = \\begin{Bmatrix} \\{P_U\\} \\\\[3pt] \\{P_K\\} + \\{R\\} \\end{Bmatrix}$$
+        <br>
+        <span class="formula-tag">Effective Force Accounting for Support Settlement / Yielding</span><br>
+        $$\\{P_{eff}\\} = \\{P_U\\} - [K_{UK}]\\{D_K\\}$$
+        $$\\{D_K\\} = \\begin{bmatrix} ${data.D_K.map(v => (v*1000).toFixed(2) + '\\text{ mm}').join(' & ')} \\end{bmatrix}^T$$
+        $$\\{P_{eff}\\} = \\begin{bmatrix} ${data.P_eff.map(v => fmt(v)).join(' & ')} \\end{bmatrix}^T$$
+      </div>
+
+      <div style="margin-top:8px;">
+        <span class="formula-tag">Complete Master Global Stiffness Matrix [K] (${data.totalDOFs} × ${data.totalDOFs})</span>
+        <div class="table-kasm-wrap">
+          <table class="kasm">
+            <thead>
+              <tr><th>DOF</th>${tableHeaders}</tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  let dSolStrs = data.unconstrainedDOFs.map((dof, idx) => {
+    const isRot = (dof % 3 === 2);
+    const unit = isRot ? '\\text{ rad}' : '\\text{ m}';
+    return `• <b>$${data.dofNames[dof]}$:</b> $${sci(data.D_U[idx])}${unit} \\quad (${fmt(data.D_U[idx], 6)}${unit})$`;
+  }).join('<br>');
+
+  html += `
+  <div class="step-item">
+    <div class="step-num">STEP 5</div>
+    <div>
+      <h3>5. System Solution for Unknown Active Displacements ($\{D_U\}$)</h3>
+      <p>Inverting or performing Gaussian elimination on the active stiffness sub-matrix:</p>
+      
+      <div class="math-box">
+        <span class="formula-tag">Linear System Inversion</span><br>
+        $$\\{D_U\\} = [K_{UU}]^{-1} \\{P_{eff}\\}$$
+        <div style="margin:6px 0; line-height: 1.6;">
+          ${dSolStrs}
+        </div>
+        <span class="formula-tag">Complete Generalized Displacement Vector {D}</span><br>
+        $$\\{D\\} = \\begin{bmatrix} ${data.D_global.map(v => fmt(v, 6)).join(' & ')} \\end{bmatrix}^T$$
+      </div>
+    </div>
+  </div>`;
+
+  let memActionsHtml = '';
+  for (let i = 0; i < data.numElements; i++) {
+    const n1 = data.globalNodes[i].label;
+    const n2 = data.globalNodes[i + 1].label;
+    memActionsHtml += `
+      <b>Element ${i+1} (${n1} → ${n2}):</b><br>
+      • $N_{${n1}} = ${fmt(data.memberActions[i][0])}\\text{ kN},\\quad V_{${n1}} = ${fmt(data.memberActions[i][1])}\\text{ kN},\\quad M_{${n1}} = ${fmt(data.memberActions[i][2])}\\text{ kN}\\cdot\\text{m}$<br>
+      • $N_{${n2}} = ${fmt(data.memberActions[i][3])}\\text{ kN},\\quad V_{${n2}} = ${fmt(data.memberActions[i][4])}\\text{ kN},\\quad M_{${n2}} = ${fmt(data.memberActions[i][5])}\\text{ kN}\\cdot\\text{m}$<br><br>
+    `;
+  }
+
+  let reaxPrint = [];
+  for (let i = 0; i < data.numNodes; i++) {
+    const dofU = 3 * i;
+    const dofV = 3 * i + 1;
+    const dofM = 3 * i + 2;
+    if (data.isConstrained[dofU]) reaxPrint.push(`R_{${data.globalNodes[i].label}x} = ${fmt(data.reactionsByDOF[dofU])}\\text{ kN}`);
+    if (data.isConstrained[dofV]) reaxPrint.push(`R_{${data.globalNodes[i].label}y} = ${fmt(data.reactionsByDOF[dofV])}\\text{ kN}`);
+    if (data.isConstrained[dofM]) reaxPrint.push(`M_{${data.globalNodes[i].label}} = ${fmt(data.reactionsByDOF[dofM])}\\text{ kN}\\cdot\\text{m}`);
+  }
+
+  html += `
+  <div class="step-item">
+    <div class="step-num">STEP 6</div>
+    <div>
+      <h3>6. Element Action Recovery, Reactions & Global Equilibrium Verification</h3>
+      <p>Member actions are recovered via $\{f\}^{(e)} = [k]^{(e)}\{d\}^{(e)} + \{f_{fem}\}^{(e)}$. Global support reactions are computed via $\{R\} = [K_{KU}]\{D_U\} + [K_{KK}]\{D_K\} + \{P_{FK}\}$:</p>
+      
+      <div class="math-box">
+        <span class="formula-tag">Element End Actions</span><br>
+        ${memActionsHtml}
+        <span class="formula-tag">Calculated Support Reactions</span><br>
+        $$${reaxPrint.join(',\\quad ')}$$
+        <br>
+        <span class="formula-tag">Global Static Equilibrium Verification</span><br>
+        • $\\sum R_y = ${data.totalReaxY.toFixed(2)}\\text{ kN} \\iff \\sum F_y = ${data.totalAppliedY.toFixed(2)}\\text{ kN} \\implies |\\Delta| = ${data.diffY.toFixed(4)}\\text{ kN}$ <span class="${data.diffY < 0.05 ? 'hl-t' : 'hl-v'}">${data.diffY < 0.05 ? '✓ (OK)' : '⚠ (Check)'}</span><br>
+        • $\\sum R_x = ${data.totalReaxX.toFixed(2)}\\text{ kN} \\iff \\sum F_x = ${data.totalAppliedX.toFixed(2)}\\text{ kN} \\implies |\\Delta| = ${data.diffX.toFixed(4)}\\text{ kN}$ <span class="${data.diffX < 0.05 ? 'hl-b' : 'hl-v'}">${data.diffX < 0.05 ? '✓ (OK)' : '⚠ (Check)'}</span>
+      </div>
+    </div>
+  </div>`;
+
+  c.innerHTML = html;
+}
+
+function renderElementTable(data) {
+  const container = document.getElementById('tableSummaryContainer');
+  let rows = '';
+
+  for (let i = 0; i < data.numElements; i++) {
+    const el = data.elements[i];
+    const n1 = data.globalNodes[i].label;
+    const n2 = data.globalNodes[i + 1].label;
+    const act = data.memberActions[i];
+    const deltaT = el.T_bot - el.T_top;
+
+    rows += `
+      <tr>
+        <td><b>Elem ${i + 1}</b></td>
+        <td>${n1} → ${n2}</td>
+        <td>${el.L.toFixed(2)} m</td>
+        <td>${el.EI_raw.toFixed(2)}</td>
+        <td style="color:var(--purple); font-weight:600;">${deltaT !== 0 ? deltaT + '°C' : '0°C'}</td>
+        <td style="color:var(--blue); font-weight:600;">${fmt(act[0])}</td>
+        <td style="color:var(--teal); font-weight:600;">${fmt(act[1])}</td>
+        <td style="color:var(--verm); font-weight:600;">${fmt(act[2])}</td>
+        <td style="color:var(--blue); font-weight:600;">${fmt(act[3])}</td>
+        <td style="color:var(--teal); font-weight:600;">${fmt(act[4])}</td>
+        <td style="color:var(--verm); font-weight:600;">${fmt(act[5])}</td>
+      </tr>
+    `;
+  }
+
+  let reaxRows = '';
+  for (let i = 0; i < data.numNodes; i++) {
+    const gn = data.globalNodes[i];
+    const dofU = 3 * i;
+    const dofV = 3 * i + 1;
+    const dofM = 3 * i + 2;
+    const isUCon = data.isConstrained[dofU];
+    const isVCon = data.isConstrained[dofV];
+    const isMCon = data.isConstrained[dofM];
+    const settVal = (data.prescribedDisplacements[dofV] * 1000).toFixed(2);
+
+    reaxRows += `
+      <tr>
+        <td><b>Node ${gn.label}</b></td>
+        <td>${gn.x.toFixed(2)} m</td>
+        <td>${isUCon ? 'Restrained' : 'Free'}</td>
+        <td style="font-weight:700; color:${isUCon ? 'var(--blue)' : 'var(--mut)'};">${isUCon ? fmt(data.reactionsByDOF[dofU]) + ' kN' : '—'}</td>
+        <td>${isVCon ? (Math.abs(settVal) > 1e-4 ? `Settled (${settVal} mm)` : 'Restrained (0 mm)') : 'Free'}</td>
+        <td style="font-weight:700; color:${isVCon ? 'var(--teal)' : 'var(--mut)'};">${isVCon ? fmt(data.reactionsByDOF[dofV]) + ' kN' : '—'}</td>
+        <td>${isMCon ? 'Restrained' : 'Free'}</td>
+        <td style="font-weight:700; color:${isMCon ? 'var(--verm)' : 'var(--mut)'};">${isMCon ? fmt(data.reactionsByDOF[dofM]) + ' kN·m' : '—'}</td>
+      </tr>
+    `;
+  }
+
+  container.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div style="font-family:var(--disp); font-size:11.5px; font-weight:700; margin-bottom:4px; color:var(--ink);">1. INTERNAL MEMBER END FORCES</div>
+      <table class="schedule-table">
+        <thead>
+          <tr>
+            <th>Element</th>
+            <th>Nodes</th>
+            <th>Length</th>
+            <th>EI (MN·m²)</th>
+            <th>ΔT (Bot−Top)</th>
+            <th>N_Start (kN)</th>
+            <th>V_Start (kN)</th>
+            <th>M_Start (kN·m)</th>
+            <th>N_End (kN)</th>
+            <th>V_End (kN)</th>
+            <th>M_End (kN·m)</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+
+    <div>
+      <div style="font-family:var(--disp); font-size:11.5px; font-weight:700; margin-bottom:4px; color:var(--ink);">2. SUPPORT REACTIONS SUMMARY</div>
+      <table class="schedule-table">
+        <thead>
+          <tr>
+            <th>Node</th>
+            <th>Position x</th>
+            <th>Horiz. Restraint</th>
+            <th>Horizontal (R_x)</th>
+            <th>Vert. Restraint / Settlement</th>
+            <th>Vertical (R_y)</th>
+            <th>Rot. Restraint</th>
+            <th>Moment (M_z)</th>
+          </tr>
+        </thead>
+        <tbody>${reaxRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function solveMatrix(A, B) {
+  const n = A.length;
+  if (n === 0) return [];
+  let M = A.map((row, i) => [...row, B[i]]);
+  for (let i = 0; i < n; i++) {
+    let maxRow = i;
+    for (let k = i + 1; k < n; k++) {
+      if (Math.abs(M[k][i]) > Math.abs(M[maxRow][i])) maxRow = k;
+    }
+    const temp = M[i]; M[i] = M[maxRow]; M[maxRow] = temp;
+    const pivot = M[i][i];
+    if (Math.abs(pivot) < 1e-12) continue;
+    for (let j = i; j <= n; j++) M[i][j] /= pivot;
+    for (let k = 0; k < n; k++) {
+      if (k !== i) {
+        const factor = M[k][i];
+        for (let j = i; j <= n; j++) {
+          M[k][j] -= factor * M[i][j];
+        }
+      }
+    }
+  }
+  return M.map(row => row[n]);
+}
+
+async function triggerCleanPrintPDF() {
+  const activeTabs = Array.from(document.querySelectorAll('.tab-pane')).map(tab => ({
+    elem: tab,
+    prevActive: tab.classList.contains('active')
+  }));
+
+  activeTabs.forEach(t => {
+    t.elem.style.display = 'block';
+  });
+
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    await window.MathJax.typesetPromise();
+  }
+
+  window.print();
+
+  activeTabs.forEach(t => {
+    t.elem.style.display = t.prevActive ? 'block' : 'none';
+  });
+}
+
+function exportFullHTMLReport() {
+  const exportBtn = document.getElementById('btnHtmlExport');
+  const originalText = exportBtn.innerHTML;
+  exportBtn.innerText = 'Generating File...';
+  exportBtn.disabled = true;
+
+  try {
+    const projName = document.getElementById('inp-proj-title').value.trim() || 'Continuous Beam Calculation';
+    const cleanFileName = (projName ? projName.replace(/[^a-zA-Z0-9_-]/g, '_') : 'Beam_Report') + '.html';
+
+    const docClone = document.documentElement.cloneNode(true);
+    const scriptTags = docClone.querySelectorAll('script');
+    scriptTags.forEach(s => {
+      if (!s.src && !s.id) s.remove();
+    });
+
+    const styleEl = document.createElement('style');
+    styleEl.innerHTML = `
+      .tab-pane { display: block !important; margin-bottom: 20px !important; }
+      .top-action-bar, .proj-header-toggle span:last-child, .btn-step, .btn-del-tbl, .btn-seg-ctrl, .btn-add-load, .btn-span-toggle, .btn-settle-toggle, .btn-temp-toggle, .btn-matrix-modal { display: none !important; }
+      .workspace-grid { grid-template-columns: 1fr !important; }
+      #sidebarPanel { display: none !important; }
+      .wrap { max-width: 1200px !important; margin: 0 auto !important; padding: 20px !important; }
+    `;
+    docClone.querySelector('head').appendChild(styleEl);
+
+    const fullHtml = '<!DOCTYPE html>\n' + docClone.outerHTML;
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = cleanFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  } catch (err) {
+    console.error('HTML export error:', err);
+    alert('Failed to generate HTML export.');
+  } finally {
+    exportBtn.innerHTML = originalText;
+    exportBtn.disabled = false;
+  }
+}
+
+window.addEventListener('resize', () => {
+  renderUnifiedDiagrams();
+});
+
+window.onload = () => {
+  renderSettlementControls();
+  renderSpanControls();
+  calculate();
+};
+</script>
+</body>
+</html>
